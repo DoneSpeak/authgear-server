@@ -36,7 +36,8 @@ public class AuthflowController {
 
     @PostMapping("/states/input")
     public ResponseEntity<Map<String, Object>> execute(@Valid @RequestBody ExecuteStepRequest request) {
-        AuthflowResponse response = service.execute(request.getStateToken(), request.getInput());
+        String inputJson = request.getInput() != null ? request.getInput().toString() : null;
+        AuthflowResponse response = service.execute(request.getStateToken(), inputJson);
         return ResponseEntity.ok(wrapResult(response));
     }
 

@@ -1,13 +1,8 @@
 authflow:
   flows:
     definitions:
-      - name: default
-        type: LOGIN
-        steps:
-          - type: IDENTIFY
-          - type: AUTHENTICATE
-
-      - name: phone_otp
+      # Sign in with a phone number and OTP via SMS to any phone number the account has.
+      - name: phone_otp_to_any_phone
         type: LOGIN
         steps:
           - type: IDENTIFY
@@ -16,9 +11,31 @@ authflow:
           - type: AUTHENTICATE
             oneOf:
               - authentication: primary_oob_otp_sms
-          - type: VERIFY
 
-      - name: multi_id
+      # Sign in with a phone number and OTP via SMS to the same phone number.
+      - name: phone_otp_to_same_phone
+        type: LOGIN
+        steps:
+          - type: IDENTIFY
+            oneOf:
+              - identification: phone
+          - type: AUTHENTICATE
+            oneOf:
+              - authentication: primary_oob_otp_sms
+
+      # Sign in with a phone number and a password
+      - name: phone_password
+        type: LOGIN
+        steps:
+          - type: IDENTIFY
+            oneOf:
+              - identification: phone
+          - type: AUTHENTICATE
+            oneOf:
+              - authentication: primary_password
+
+      # Sign in with a phone number, or an email address, with a password
+      - name: phone_email_password
         type: LOGIN
         steps:
           - type: IDENTIFY
@@ -26,7 +43,85 @@ authflow:
               - identification: phone
               - identification: email
           - type: AUTHENTICATE
+            oneOf:
+              - authentication: primary_password
 
+      # Sign in with an email address, a password and a TOTP
+      - name: email_password_totp
+        type: LOGIN
+        steps:
+          - type: IDENTIFY
+            oneOf:
+              - identification: email
+          - type: AUTHENTICATE
+            oneOf:
+              - authentication: primary_password
+          - type: AUTHENTICATE
+            oneOf:
+              - authentication: secondary_totp
+      - name: email_password_primary_oob_otp_email
+        type: LOGIN
+        steps:
+          - type: IDENTIFY
+            oneOf:
+              - identification: email
+          - type: AUTHENTICATE
+            oneOf:
+              - authentication: primary_password
+          - type: AUTHENTICATE
+            oneOf:
+              - authentication: primary_oob_otp_email
+      # Sign in with an email address, a password. Perform 2FA if the end-user has configured.
+      - name: email_password_optional_2fa
+        type: LOGIN
+        steps:
+          - type: IDENTIFY
+            oneOf:
+              - identification: email
+          - type: AUTHENTICATE
+            oneOf:
+              - authentication: primary_password
+          - type: AUTHENTICATE
+            oneOf:
+              - authentication: secondary_totp
+              - authentication: recovery_code
+              - authentication: device_token
+
+      # Sign in with an email address, a password. Require the end-user to change password.
+      - name: forced_password_update
+        type: LOGIN
+        steps:
+          - type: IDENTIFY
+            oneOf:
+              - identification: email
+          - type: AUTHENTICATE
+            oneOf:
+              - authentication: primary_password
+
+      # Sign in with an email address, a password. Enforce 2FA but allow the end-user to enroll.
+      - name: email_password_enforced_2fa
+        type: LOGIN
+        steps:
+          - type: IDENTIFY
+            oneOf:
+              - identification: email
+          - type: AUTHENTICATE
+            oneOf:
+              - authentication: primary_password
+          - type: AUTHENTICATE
+            oneOf:
+              - authentication: secondary_totp
+              - authentication: recovery_code
+              - authentication: device_token
+
+      # Default simple flow
+      - name: default
+        type: LOGIN
+        steps:
+          - type: IDENTIFY
+          - type: AUTHENTICATE
+
+      # Signup flow
       - name: signup_default
         type: SIGNUP
         steps:

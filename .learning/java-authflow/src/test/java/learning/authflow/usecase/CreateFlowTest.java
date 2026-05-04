@@ -8,10 +8,10 @@ import learning.authflow.flowdef.FlowDefinitionProvider;
 import learning.authflow.flowdef.StepDefinition;
 import learning.authflow.model.FlowType;
 import learning.authflow.model.StepType;
-import learning.authflow.response.AuthflowResponse;
 import learning.authflow.core.AuthflowEngine;
 import learning.authflow.core.IdGenerator;
 import learning.authflow.step.registry.StepHandlerRegistry;
+import learning.authflow.storage.SessionStorage;
 import learning.authflow.storage.StateStorage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -36,6 +36,7 @@ import static org.mockito.Mockito.when;
 class CreateFlowTest {
 
     @Mock private StateStorage stateStorage;
+    @Mock private SessionStorage sessionStorage;
     @Mock private StepHandlerRegistry handlerRegistry;
     @Mock private FlowDefinitionProvider flowProvider;
     @Mock private IdGenerator idGenerator;
@@ -46,7 +47,7 @@ class CreateFlowTest {
     @BeforeEach
     void setUp() {
         tokenManager = new StateTokenManager();
-        engine = new AuthflowEngine(stateStorage, handlerRegistry, flowProvider,
+        engine = new AuthflowEngine(stateStorage, sessionStorage, handlerRegistry, flowProvider,
                                     tokenManager, idGenerator);
     }
 
@@ -67,12 +68,12 @@ class CreateFlowTest {
         when(idGenerator.generate()).thenReturn("flow-123");
 
         // When
-        AuthflowResponse response = engine.create("login", "default");
+        FlowInstance flow = engine.create("login", "default");
 
         // Then
-        assertThat(response.getStateToken()).startsWith("authflowstate_");
-        assertThat(response.getType()).isEqualTo(FlowType.LOGIN);
-        assertThat(response.getAction().getType()).isEqualTo(StepType.IDENTIFY);
+        assertThat(flow.getStateToken()).startsWith("authflowstate_");
+        assertThat(flow.getFlowType()).isEqualTo(FlowType.LOGIN);
+        assertThat(flow.getNodes().get(flow.getCurrentNodeIndex()).getStepType()).isEqualTo(StepType.IDENTIFY);
     }
 
     @Test
@@ -91,11 +92,11 @@ class CreateFlowTest {
         when(idGenerator.generate()).thenReturn("flow-456");
 
         // When
-        AuthflowResponse response = engine.create("signup", "signup_default");
+        FlowInstance flow = engine.create("signup", "signup_default");
 
         // Then
-        assertThat(response.getType()).isEqualTo(FlowType.SIGNUP);
-        assertThat(response.getAction().getType()).isEqualTo(StepType.IDENTIFY);
+        assertThat(flow.getFlowType()).isEqualTo(FlowType.SIGNUP);
+        assertThat(flow.getNodes().get(flow.getCurrentNodeIndex()).getStepType()).isEqualTo(StepType.IDENTIFY);
     }
 
     @Test
@@ -124,9 +125,9 @@ class CreateFlowTest {
         when(idGenerator.generate()).thenReturn("flow-789");
 
         // When
-        AuthflowResponse response = engine.create("login", "empty");
+        FlowInstance flow = engine.create("login", "empty");
 
         // Then
-        assertThat(response.getAction().getType()).isEqualTo(StepType.FINISHED);
+        assertThat(flow.getNodes().get(flow.getCurrentNodeIndex()).getStepType()).isEqualTo(StepType.FINISHED);
     }
 }

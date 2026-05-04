@@ -6,12 +6,17 @@ spring:
     import: classpath:flows.yaml
   application:
     name: authflow
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+    default-property-inclusion: non_null
+    serialization:
+      write-enums-using-to-string: true
   data:
     redis:
       host: localhost
       port: 6379
       database: 0
-      password: ${REDIS_PASSWORD:-opsbase123}
+      password: opsbase123
       timeout: 2000ms
       lettuce:
         pool:

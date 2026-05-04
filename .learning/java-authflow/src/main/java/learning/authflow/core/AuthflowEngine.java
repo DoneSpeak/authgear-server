@@ -1,5 +1,6 @@
 package learning.authflow.core;
 
+import learning.authflow.flowdef.BranchDefinition;
 import learning.authflow.flowdef.FlowDefinition;
 import learning.authflow.flowdef.FlowDefinitionProvider;
 import learning.authflow.flowdef.StepDefinition;
@@ -8,11 +9,10 @@ import learning.authflow.model.BranchSelection;
 import learning.authflow.model.FlowType;
 import learning.authflow.model.NodeType;
 import learning.authflow.model.StepType;
-import learning.authflow.response.Action;
-import learning.authflow.response.AuthflowResponse;
 import learning.authflow.step.StepHandler;
 import learning.authflow.step.StepResult;
 import learning.authflow.step.registry.StepHandlerRegistry;
+import learning.authflow.storage.SessionStorage;
 import learning.authflow.storage.StateStorage;
 
 import java.util.ArrayList;
@@ -24,24 +24,27 @@ import java.util.HashMap;
  */
 public class AuthflowEngine {
     private final StateStorage stateStorage;
+    private final SessionStorage sessionStorage;
     private final StepHandlerRegistry handlerRegistry;
     private final FlowDefinitionProvider flowProvider;
     private final StateTokenManager stateTokenManager;
     private final IdGenerator idGenerator;
 
     public AuthflowEngine(StateStorage stateStorage,
+                          SessionStorage sessionStorage,
                           StepHandlerRegistry handlerRegistry,
                           FlowDefinitionProvider flowProvider,
                           StateTokenManager stateTokenManager,
                           IdGenerator idGenerator) {
         this.stateStorage = stateStorage;
+        this.sessionStorage = sessionStorage;
         this.handlerRegistry = handlerRegistry;
         this.flowProvider = flowProvider;
         this.stateTokenManager = stateTokenManager;
         this.idGenerator = idGenerator;
     }
 
-    public AuthflowResponse create(String type, String name) {
+    public FlowInstance create(String type, String name) {
         FlowDefinition def = flowProvider.get(name);
         if (def == null) {
             throw new learning.authflow.exception.FlowNotFoundException("Flow not found: " + name);
@@ -58,42 +61,50 @@ public class AuthflowEngine {
         advance(flow, null, null);
         stateStorage.createFlow(flow);
 
-        return toResponse(flow);
+        return flow;
     }
 
-    public AuthflowResponse execute(String stateToken, AuthflowInput input) {
+    public FlowInstance execute(String stateToken, AuthflowInput input) {
         FlowInstance flow = stateStorage.getFlowByStateToken(stateToken);
         StepContext context = buildStepContext(flow);
 
         StepHandler handler = handlerRegistry.get(context.getCurrentNode().getStepType());
         StepResult result = handler.handle(context, input);
 
-        updateFlowWithResult(flow, result, input);
+        updateFlowWithResult(flow, result, input, context);
 
         flow.setStateToken(stateTokenManager.generateToken());
         stateStorage.createFlow(flow);
 
-        return toResponse(flow);
+        return flow;
     }
 
     private StepContext buildStepContext(FlowInstance flow) {
+        FlowNode currentNode = flow.getCurrentNode();
+        if (currentNode == null) {
+            throw new IllegalStateException("No current node available");
+        }
+        // 从 Redis 获取或创建 Session
+        Session session = sessionStorage.getOrCreate(flow.getFlowId());
         return StepContext.builder()
             .flowId(flow.getFlowId())
             .flowType(flow.getFlowType())
             .flowName(flow.getFlowName())
-            .currentNode(flow.getNodes().get(flow.getCurrentNodeIndex()))
+            .currentNode(currentNode)
             .currentNodeIndex(flow.getCurrentNodeIndex())
             .userId(flow.getUserId())
-            .sessionData(new HashMap<>())
+            .session(session)
             .attributes(new HashMap<>())
             .build();
     }
 
-    private void updateFlowWithResult(FlowInstance flow, StepResult result, AuthflowInput input) {
+    private void updateFlowWithResult(FlowInstance flow, StepResult result, AuthflowInput input, StepContext context) {
         if (result.getUserId() != null) {
             flow.setUserId(result.getUserId());
         }
         flow.getCurrentNode().setResult(result);
+        // 将 Session 保存到 Redis
+        sessionStorage.save(context.getSession());
 
         if (result.isComplete()) {
             advance(flow, result, input);
@@ -140,26 +151,5 @@ public class AuthflowEngine {
         node.setData(new HashMap<>());
         node.setResult(null);
         return node;
-    }
-
-    private AuthflowResponse toResponse(FlowInstance flow) {
-        AuthflowResponse response = new AuthflowResponse();
-        response.setFlowId(flow.getFlowId());
-        response.setStateToken(flow.getStateToken());
-        response.setType(flow.getFlowType());
-        response.setName(flow.getFlowName());
-
-        FlowNode currentNode = flow.getNodes().get(flow.getCurrentNodeIndex());
-        Action action = new Action();
-        action.setType(currentNode.getStepType());
-        action.setData(new learning.authflow.response.ActionData());
-
-        if (currentNode.getData().containsKey("branch")) {
-            String branch = (String) currentNode.getData().get("branch");
-            action.setIdentification(branch);
-        }
-
-        response.setAction(action);
-        return response;
     }
 }

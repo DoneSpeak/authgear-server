@@ -11,12 +11,12 @@ import learning.authflow.input.AuthflowInputJson;
 import learning.authflow.model.FlowType;
 import learning.authflow.model.NodeType;
 import learning.authflow.model.StepType;
-import learning.authflow.response.AuthflowResponse;
 import learning.authflow.core.AuthflowEngine;
 import learning.authflow.core.IdGenerator;
 import learning.authflow.step.StepHandler;
 import learning.authflow.step.StepResult;
 import learning.authflow.step.registry.StepHandlerRegistry;
+import learning.authflow.storage.SessionStorage;
 import learning.authflow.storage.StateStorage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,6 +40,7 @@ import static org.mockito.Mockito.when;
 class BranchSwitchingTest {
 
     @Mock private StateStorage stateStorage;
+    @Mock private SessionStorage sessionStorage;
     @Mock private StepHandlerRegistry handlerRegistry;
     @Mock private FlowDefinitionProvider flowProvider;
     @Mock private IdGenerator idGenerator;
@@ -51,7 +52,7 @@ class BranchSwitchingTest {
     @BeforeEach
     void setUp() {
         tokenManager = new StateTokenManager();
-        engine = new AuthflowEngine(stateStorage, handlerRegistry, flowProvider,
+        engine = new AuthflowEngine(stateStorage, sessionStorage, handlerRegistry, flowProvider,
                                     tokenManager, idGenerator);
     }
 
@@ -78,27 +79,27 @@ class BranchSwitchingTest {
         when(flowProvider.get("multi_id")).thenReturn(def);
         when(idGenerator.generate()).thenReturn("flow-123");
 
-        AuthflowResponse stateA = engine.create("login", "multi_id");
+        FlowInstance flowA = engine.create("login", "multi_id");
 
         // Given - 流程实例在identify步骤
         FlowInstance flow = createFlowWithNode(0, "0", StepType.IDENTIFY);
         flow.setFlowId("flow-123");
         flow.setFlowName("multi_id");
-        flow.setStateToken(stateA.getStateToken());
+        flow.setStateToken(flowA.getStateToken());
 
-        when(stateStorage.getFlowByStateToken(stateA.getStateToken())).thenReturn(flow);
+        when(stateStorage.getFlowByStateToken(flowA.getStateToken())).thenReturn(flow);
         when(flowProvider.get("multi_id")).thenReturn(def);
         when(handlerRegistry.get(StepType.IDENTIFY)).thenReturn(identifyHandler);
         when(identifyHandler.handle(any(), any())).thenReturn(
             StepResult.builder().complete(true).build());
 
         // When - 选择phone分支
-        AuthflowResponse stateB = engine.execute(stateA.getStateToken(),
+        FlowInstance flowB = engine.execute(flowA.getStateToken(),
             AuthflowInputJson.from("{\"branch\":\"phone\"}"));
 
-        // Then
-        assertThat(stateB.getAction().getIdentification()).isEqualTo("phone");
-        assertThat(stateB.getStateToken()).isNotEqualTo(stateA.getStateToken());
+        // Then - 验证流程推进到新步骤且token更新
+        assertThat(flowB.getStateToken()).isNotEqualTo(flowA.getStateToken());
+        assertThat(flowB.getCurrentNodeIndex()).isGreaterThan(flowA.getCurrentNodeIndex());
     }
 
     @Test
@@ -124,26 +125,27 @@ class BranchSwitchingTest {
         when(flowProvider.get("multi_id")).thenReturn(def);
         when(idGenerator.generate()).thenReturn("flow-123");
 
-        AuthflowResponse stateA = engine.create("login", "multi_id");
+        FlowInstance flowA = engine.create("login", "multi_id");
 
         // Given - 流程实例（用于phone分支）
         FlowInstance flowPhone = createFlowWithNode(0, "0", StepType.IDENTIFY);
         flowPhone.setFlowId("flow-123");
         flowPhone.setFlowName("multi_id");
-        flowPhone.setStateToken(stateA.getStateToken());
+        flowPhone.setStateToken(flowA.getStateToken());
 
-        when(stateStorage.getFlowByStateToken(stateA.getStateToken())).thenReturn(flowPhone);
+        when(stateStorage.getFlowByStateToken(flowA.getStateToken())).thenReturn(flowPhone);
         when(flowProvider.get("multi_id")).thenReturn(def);
         when(handlerRegistry.get(StepType.IDENTIFY)).thenReturn(identifyHandler);
         when(identifyHandler.handle(any(), any())).thenReturn(
             StepResult.builder().complete(true).build());
 
         // When - 使用原始StateA选择email分支
-        AuthflowResponse stateC = engine.execute(stateA.getStateToken(),
+        FlowInstance flowC = engine.execute(flowA.getStateToken(),
             AuthflowInputJson.from("{\"branch\":\"email\"}"));
 
-        // Then
-        assertThat(stateC.getAction().getIdentification()).isEqualTo("email");
+        // Then - 验证流程推进到新步骤且token更新
+        assertThat(flowC.getStateToken()).isNotEqualTo(flowA.getStateToken());
+        assertThat(flowC.getCurrentNodeIndex()).isGreaterThan(flowA.getCurrentNodeIndex());
     }
 
     private FlowInstance createFlowWithNode(int index, String nodeId, StepType type) {

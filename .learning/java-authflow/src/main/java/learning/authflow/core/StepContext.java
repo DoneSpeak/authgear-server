@@ -3,6 +3,7 @@ package learning.authflow.core;
 import learning.authflow.model.FlowType;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.util.Map;
 
@@ -26,7 +27,10 @@ public class StepContext {
     private final String userId;
     private final String identityId;
 
-    // 本次执行的临时数据（由 Handler 自行管理）
-    private final Map<String, Object> sessionData;
+    // 跨步骤共享的 Session 数据（从 Redis 加载，可被更新）
+    @Setter
+    private Session session;
+
+    // 本次执行的临时属性
     private final Map<String, Object> attributes;
 }

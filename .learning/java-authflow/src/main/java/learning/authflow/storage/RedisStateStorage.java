@@ -10,6 +10,7 @@ import java.time.Duration;
 
 /**
  * Redis状态存储实现 - 双Key设计
+ * 专门负责 FlowInstance 的持久化
  */
 public class RedisStateStorage implements StateStorage {
     private final StringRedisTemplate redisTemplate;

@@ -86,8 +86,7 @@ An identity is used to look up a user.
 A user either has no anonymous identity, or have exactly one anonymous identity.
 A user with anonymous identity is considered as anonymous user.
 
-A user must have at least 1 Login ID identity or 1 OAuth identity.
-
+A user must have at least 1 Login ID identity or 1 OAuth identity
 ### Identity attributes
 
 See [Identity Attributes](./glossary.md#identity-attributes)
@@ -138,7 +137,7 @@ The server verifies the validity of the key-pair by verifying a JWT.
 A challenge is requested by the SDK on demand, it is one-time use and short-lived.
 The JWT is provided in the [login_hint](./oidc.md#login_hint).
 
-#### Anonymous Identity JWT headers
+#### Anonymous Identity JWT headers 
 
 - `typ`: Must be the string `vnd.authgear.anonymous-request`.
 

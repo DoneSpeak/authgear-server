@@ -1,6 +1,7 @@
 package learning.authflow.step.handlers;
 
 import learning.authflow.core.ExecutionContext;
+import learning.authflow.core.Session;
 import learning.authflow.core.StepContext;
 import learning.authflow.input.AuthflowInput;
 import learning.authflow.model.StepType;
@@ -27,8 +28,12 @@ public class IdentifyHandler implements StepHandler {
             throw new IllegalArgumentException("Missing required fields: identification or login_id");
         }
 
-        // 在实际实现中，这里会查询用户服务
-        // 简化处理：假设识别成功
+        // 保存到 Session 供后续步骤使用（通过 with 方法创建新实例）
+        Session updatedSession = ctx.getSession()
+            .withIdentification(identifyInput.getIdentification())
+            .withLoginId(identifyInput.getLoginId());
+        ctx.setSession(updatedSession);
+
         return StepResult.builder()
             .complete(true)
             .build();

@@ -8,7 +8,6 @@ import lombok.Data;
  */
 @Data
 public class AuthflowResponse {
-    private String flowId;
     private String stateToken;
     private FlowType type;
     private String name;

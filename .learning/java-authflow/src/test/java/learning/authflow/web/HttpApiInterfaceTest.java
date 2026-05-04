@@ -83,7 +83,7 @@ class HttpApiInterfaceTest {
         @Test
         @DisplayName("执行步骤端点应返回200和新stateToken")
         void test_uc07_executeStepEndpoint_returns200WithNewToken() throws Exception {
-            ExecuteStepRequest request = new ExecuteStepRequest("token-123", "{\"code\":\"123\"}");
+            ExecuteStepRequest request = new ExecuteStepRequest("token-123", objectMapper.readTree("{\"code\":\"123\"}"));
             AuthflowResponse response = createMockResponse("new-token", StepType.FINISHED);
 
             when(authflowService.execute("token-123", "{\"code\":\"123\"}"))
@@ -100,7 +100,7 @@ class HttpApiInterfaceTest {
         @Test
         @DisplayName("无效stateToken应返回401和错误结构")
         void test_uc07_invalidToken_returns401WithErrorStructure() throws Exception {
-            ExecuteStepRequest request = new ExecuteStepRequest("invalid-token", "{}");
+            ExecuteStepRequest request = new ExecuteStepRequest("invalid-token", objectMapper.readTree("{}"));
 
             when(authflowService.execute(any(), any()))
                 .thenThrow(new learning.authflow.exception.InvalidStateTokenException("Invalid token"));

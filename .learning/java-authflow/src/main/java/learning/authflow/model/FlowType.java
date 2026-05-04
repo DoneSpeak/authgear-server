@@ -5,5 +5,10 @@ public enum FlowType {
     SIGNUP,
     SIGNUP_LOGIN,
     REAUTH,
-    ACCOUNT_RECOVERY
+    ACCOUNT_RECOVERY;
+
+    @Override
+    public String toString() {
+        return name().toLowerCase();
+    }
 }

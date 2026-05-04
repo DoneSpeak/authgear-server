@@ -1,5 +1,6 @@
 package learning.authflow.web.dto;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -15,5 +16,5 @@ public class ExecuteStepRequest {
     @NotBlank
     private String stateToken;
 
-    private String input;       // JSON字符串
+    private JsonNode input;
 }

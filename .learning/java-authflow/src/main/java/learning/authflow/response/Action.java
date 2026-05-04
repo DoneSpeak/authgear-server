@@ -9,7 +9,5 @@ import lombok.Data;
 @Data
 public class Action {
     private StepType type;
-    private String identification;
-    private String authentication;
     private ActionData data;
 }

@@ -19,6 +19,7 @@ import learning.authflow.core.IdGenerator;
 import learning.authflow.step.StepHandler;
 import learning.authflow.step.StepResult;
 import learning.authflow.step.registry.StepHandlerRegistry;
+import learning.authflow.storage.SessionStorage;
 import learning.authflow.storage.StateStorage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -43,6 +44,7 @@ import static org.mockito.Mockito.when;
 class ErrorHandlingTest {
 
     @Mock private StateStorage stateStorage;
+    @Mock private SessionStorage sessionStorage;
     @Mock private StepHandlerRegistry handlerRegistry;
     @Mock private FlowDefinitionProvider flowProvider;
     @Mock private IdGenerator idGenerator;
@@ -53,7 +55,7 @@ class ErrorHandlingTest {
     @BeforeEach
     void setUp() {
         tokenManager = new StateTokenManager();
-        engine = new AuthflowEngine(stateStorage, handlerRegistry, flowProvider,
+        engine = new AuthflowEngine(stateStorage, sessionStorage, handlerRegistry, flowProvider,
                                     tokenManager, idGenerator);
     }
 

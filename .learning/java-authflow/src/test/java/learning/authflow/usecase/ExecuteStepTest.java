@@ -11,13 +11,13 @@ import learning.authflow.input.AuthflowInputJson;
 import learning.authflow.model.FlowType;
 import learning.authflow.model.NodeType;
 import learning.authflow.model.StepType;
-import learning.authflow.response.AuthflowResponse;
 import learning.authflow.core.AuthflowEngine;
 import learning.authflow.core.IdGenerator;
 import learning.authflow.step.StepHandler;
 import learning.authflow.step.StepResult;
 import learning.authflow.step.handlers.IdentifyHandler;
 import learning.authflow.step.registry.StepHandlerRegistry;
+import learning.authflow.storage.SessionStorage;
 import learning.authflow.storage.StateStorage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -41,6 +41,7 @@ import static org.mockito.Mockito.when;
 class ExecuteStepTest {
 
     @Mock private StateStorage stateStorage;
+    @Mock private SessionStorage sessionStorage;
     @Mock private StepHandlerRegistry handlerRegistry;
     @Mock private FlowDefinitionProvider flowProvider;
     @Mock private IdGenerator idGenerator;
@@ -52,7 +53,7 @@ class ExecuteStepTest {
     @BeforeEach
     void setUp() {
         tokenManager = new StateTokenManager();
-        engine = new AuthflowEngine(stateStorage, handlerRegistry, flowProvider,
+        engine = new AuthflowEngine(stateStorage, sessionStorage, handlerRegistry, flowProvider,
                                     tokenManager, idGenerator);
     }
 
@@ -80,12 +81,12 @@ class ExecuteStepTest {
             StepResult.builder().complete(true).build());
 
         // When
-        AuthflowResponse response = engine.execute("token-123",
+        FlowInstance resultFlow = engine.execute("token-123",
             AuthflowInputJson.from("{\"identification\":\"phone\",\"login_id\":\"+8613800138000\"}"));
 
         // Then
-        assertThat(response.getStateToken()).isNotEqualTo("token-123");
-        assertThat(response.getAction().getType()).isEqualTo(StepType.AUTHENTICATE);
+        assertThat(resultFlow.getStateToken()).isNotEqualTo("token-123");
+        assertThat(resultFlow.getNodes().get(resultFlow.getCurrentNodeIndex()).getStepType()).isEqualTo(StepType.AUTHENTICATE);
     }
 
     @Test
@@ -110,12 +111,12 @@ class ExecuteStepTest {
             StepResult.builder().complete(false).build());
 
         // When
-        AuthflowResponse response = engine.execute("token-123",
+        FlowInstance resultFlow = engine.execute("token-123",
             AuthflowInputJson.from("{\"identification\":\"phone\"}"));
 
         // Then - 仍在identify步骤，但token已更新
-        assertThat(response.getAction().getType()).isEqualTo(StepType.IDENTIFY);
-        assertThat(response.getStateToken()).isNotEqualTo("token-123");
+        assertThat(resultFlow.getNodes().get(resultFlow.getCurrentNodeIndex()).getStepType()).isEqualTo(StepType.IDENTIFY);
+        assertThat(resultFlow.getStateToken()).isNotEqualTo("token-123");
     }
 
     @Test
@@ -141,11 +142,11 @@ class ExecuteStepTest {
             StepResult.builder().complete(true).build());
 
         // When
-        AuthflowResponse response = engine.execute("token-123",
+        FlowInstance resultFlow = engine.execute("token-123",
             AuthflowInputJson.from("{}"));
 
         // Then
-        assertThat(response.getAction().getType()).isEqualTo(StepType.FINISHED);
+        assertThat(resultFlow.getNodes().get(resultFlow.getCurrentNodeIndex()).getStepType()).isEqualTo(StepType.FINISHED);
     }
 
     private FlowInstance createFlowWithNode(int index, String nodeId, StepType type) {

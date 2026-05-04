@@ -112,7 +112,8 @@ class RedisPersistenceTest {
     void test_uc06_deleteFlow_invalidatesAllStateKeys() {
         String stateA = service.create("login", "default").getStateToken();
         String stateB = service.execute(stateA, "{}").getStateToken();
-        String flowId = service.getState(stateA).getFlowId();
+        FlowInstance flow = stateStorage.getFlowByStateToken(stateA);
+        String flowId = flow.getFlowId();
 
         stateStorage.deleteFlow(flowId);
 

@@ -11,12 +11,12 @@ import learning.authflow.input.AuthflowInputJson;
 import learning.authflow.model.FlowType;
 import learning.authflow.model.NodeType;
 import learning.authflow.model.StepType;
-import learning.authflow.response.AuthflowResponse;
 import learning.authflow.core.AuthflowEngine;
 import learning.authflow.core.IdGenerator;
 import learning.authflow.step.StepHandler;
 import learning.authflow.step.StepResult;
 import learning.authflow.step.registry.StepHandlerRegistry;
+import learning.authflow.storage.SessionStorage;
 import learning.authflow.storage.StateStorage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -41,6 +41,7 @@ import static org.mockito.Mockito.when;
 class StateTokenManagementTest {
 
     @Mock private StateStorage stateStorage;
+    @Mock private SessionStorage sessionStorage;
     @Mock private StepHandlerRegistry handlerRegistry;
     @Mock private FlowDefinitionProvider flowProvider;
     @Mock private IdGenerator idGenerator;
@@ -52,7 +53,7 @@ class StateTokenManagementTest {
     @BeforeEach
     void setUp() {
         tokenManager = new StateTokenManager();
-        engine = new AuthflowEngine(stateStorage, handlerRegistry, flowProvider,
+        engine = new AuthflowEngine(stateStorage, sessionStorage, handlerRegistry, flowProvider,
                                     tokenManager, idGenerator);
     }
 
@@ -72,25 +73,25 @@ class StateTokenManagementTest {
         when(flowProvider.get("default")).thenReturn(def);
         when(idGenerator.generate()).thenReturn("flow-123");
 
-        AuthflowResponse stateA = engine.create("login", "default");
+        FlowInstance flowA = engine.create("login", "default");
 
         // Given - 流程实例
         FlowInstance flow = createFlowWithNode(0, "0", StepType.IDENTIFY);
         flow.setFlowName("default");
-        flow.setStateToken(stateA.getStateToken());
+        flow.setStateToken(flowA.getStateToken());
 
-        when(stateStorage.getFlowByStateToken(stateA.getStateToken())).thenReturn(flow);
+        when(stateStorage.getFlowByStateToken(flowA.getStateToken())).thenReturn(flow);
         when(flowProvider.get("default")).thenReturn(def);
         when(handlerRegistry.get(StepType.IDENTIFY)).thenReturn(identifyHandler);
         when(identifyHandler.handle(any(), any())).thenReturn(
             StepResult.builder().complete(true).build());
 
         // When
-        AuthflowResponse stateB = engine.execute(stateA.getStateToken(),
+        FlowInstance flowB = engine.execute(flowA.getStateToken(),
             AuthflowInputJson.from("{}"));
 
         // Then
-        assertThat(stateA.getStateToken()).isNotEqualTo(stateB.getStateToken());
+        assertThat(flowA.getStateToken()).isNotEqualTo(flowB.getStateToken());
     }
 
     @Test
@@ -120,10 +121,10 @@ class StateTokenManagementTest {
         when(idGenerator.generate()).thenReturn("flow-123");
 
         // When
-        AuthflowResponse response = engine.create("login", "default");
+        FlowInstance flow = engine.create("login", "default");
 
         // Then
-        assertThat(response.getStateToken()).startsWith("authflowstate_");
+        assertThat(flow.getStateToken()).startsWith("authflowstate_");
     }
 
     private FlowInstance createFlowWithNode(int index, String nodeId, StepType type) {

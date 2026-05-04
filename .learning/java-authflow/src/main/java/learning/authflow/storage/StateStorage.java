@@ -4,6 +4,7 @@ import learning.authflow.core.FlowInstance;
 
 /**
  * 状态存储接口 - 符合ISP原则，只定义必要方法
+ * 专门负责 FlowInstance 的持久化
  */
 public interface StateStorage {
     /**

@@ -8,5 +8,10 @@ public enum StepType {
     USER_PROFILE,
     RECOVERY_CODE,
     PROMPT_CREATE_PASSKEY,
-    FINISHED
+    FINISHED;
+
+    @Override
+    public String toString() {
+        return name().toLowerCase();
+    }
 }
