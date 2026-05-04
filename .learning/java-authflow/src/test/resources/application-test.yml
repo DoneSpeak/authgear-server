@@ -1,0 +1,10 @@
+authflow:
+  storage:
+    ttl: 60      # 1 minute for testing
+
+spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 1

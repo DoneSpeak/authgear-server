@@ -1,0 +1,8 @@
+/Users/ygr/Code/mygithub/authgear-server/.learning/java-authflow/src/test/java/learning/authflow/web/TestControllerConfig.java
+/Users/ygr/Code/mygithub/authgear-server/.learning/java-authflow/src/test/java/learning/authflow/usecase/CreateFlowTest.java
+/Users/ygr/Code/mygithub/authgear-server/.learning/java-authflow/src/test/java/learning/authflow/usecase/BranchSwitchingTest.java
+/Users/ygr/Code/mygithub/authgear-server/.learning/java-authflow/src/test/java/learning/authflow/web/HttpApiInterfaceTest.java
+/Users/ygr/Code/mygithub/authgear-server/.learning/java-authflow/src/test/java/learning/authflow/usecase/ExecuteStepTest.java
+/Users/ygr/Code/mygithub/authgear-server/.learning/java-authflow/src/test/java/learning/authflow/usecase/StateTokenManagementTest.java
+/Users/ygr/Code/mygithub/authgear-server/.learning/java-authflow/src/test/java/learning/authflow/usecase/ErrorHandlingTest.java
+/Users/ygr/Code/mygithub/authgear-server/.learning/java-authflow/src/test/java/learning/authflow/integration/RedisPersistenceTest.java

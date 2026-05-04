@@ -1,0 +1,35 @@
+authflow:
+  flows:
+    definitions:
+      - name: default
+        type: LOGIN
+        steps:
+          - type: IDENTIFY
+          - type: AUTHENTICATE
+
+      - name: phone_otp
+        type: LOGIN
+        steps:
+          - type: IDENTIFY
+            oneOf:
+              - identification: phone
+          - type: AUTHENTICATE
+            oneOf:
+              - authentication: primary_oob_otp_sms
+          - type: VERIFY
+
+      - name: multi_id
+        type: LOGIN
+        steps:
+          - type: IDENTIFY
+            oneOf:
+              - identification: phone
+              - identification: email
+          - type: AUTHENTICATE
+
+      - name: signup_default
+        type: SIGNUP
+        steps:
+          - type: IDENTIFY
+          - type: CREATE_AUTHENTICATOR
+          - type: USER_PROFILE

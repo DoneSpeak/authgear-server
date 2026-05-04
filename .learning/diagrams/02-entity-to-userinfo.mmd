@@ -1,0 +1,20 @@
+flowchart LR
+  subgraph queries [user.Queries]
+    Get[Get ctx userID role]
+  end
+  subgraph svc [UserInfoService]
+    GetBearer[GetUserInfoBearer]
+    GetDB[getUserInfoFromDatabase]
+  end
+  Store["_auth_user Store"] --> Get
+  DeriveStd[StandardAttributes.Derive by role]
+  ReadCustom[CustomAttributes.Read by role]
+  Get --> DeriveStd
+  Get --> ReadCustom
+  DeriveStd --> modelUser[model.User]
+  ReadCustom --> modelUser
+  Get --> GetMany
+  GetBearer --> GetDB
+  GetDB --> Get
+  GetDB --> UserInfo[UserInfo struct]
+  modelUser --> UserInfo

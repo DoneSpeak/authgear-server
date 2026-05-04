@@ -111,7 +111,7 @@ func (b SQLBuilderApp) Insert(into string) InsertBuilder {
     builder = builder.Columns("app_id")  // 自动添加 app_id 列
     return InsertBuilder{
         builder: builder,
-        appID:   b.appID,
+        appID:   b.appID, 
     }
 }
 ```

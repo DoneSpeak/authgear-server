@@ -1,0 +1,29 @@
+sequenceDiagram
+  participant Client
+  participant Handler as SettingsProfileEditHandler
+  participant Users as UserQueries.GetRaw
+  participant StdAttrs as StdAttrsService
+  participant NoEvent as ServiceNoEvent
+  participant Store as user.Store
+  participant DB as _auth_user
+  participant Events as EventService
+
+  Client->>Handler: POST save (form: pointer->value)
+  Handler->>Users: GetRaw(ctx, userID)
+  Users->>DB: SELECT standard_attributes
+  DB-->>Users: raw user
+  Users-->>Handler: user
+  Handler->>Handler: stdattrs.T(std).MergedWithForm(form)
+  Handler->>StdAttrs: UpdateStandardAttributes(ctx, RoleEndUser, userID, attrs)
+  StdAttrs->>NoEvent: UpdateStandardAttributes(role, userID, stdAttrs)
+  Note over NoEvent: 见文档「standard_attributes 安全落库」
+  NoEvent->>Store: UpdateStandardAttributes(ctx, userID, stdAttrs)
+  Store->>DB: UPDATE standard_attributes, updated_at
+  DB-->>Store: OK
+  Store-->>NoEvent: nil
+  NoEvent->>NoEvent: PopulateIdentityAwareStandardAttributes
+  NoEvent-->>StdAttrs: nil
+  StdAttrs->>Events: DispatchEventOnCommit(UserProfilePreUpdate...)
+  Events-->>StdAttrs: nil
+  StdAttrs-->>Handler: nil
+  Handler-->>Client: Redirect /settings/profile

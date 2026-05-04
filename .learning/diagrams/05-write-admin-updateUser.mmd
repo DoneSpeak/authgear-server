@@ -1,0 +1,36 @@
+sequenceDiagram
+  participant Client
+  participant GraphQL as updateUser Resolve
+  participant Facade as UserProfileFacade
+  participant StdAttrs as StandardAttributesService
+  participant CustomAttrs as CustomAttributesService
+  participant NoEvent_Std as StdAttrsServiceNoEvent
+  participant NoEvent_Custom as CustomAttrsServiceNoEvent
+  participant Store as user.Store
+  participant DB as _auth_user
+  participant Events as EventService
+
+  Client->>GraphQL: mutation updateUser(input: { userID, standardAttributes, customAttributes })
+  GraphQL->>Facade: UpdateUserProfile(ctx, RoleGreatest, userID, stdAttrs, customAttrs)
+  Facade->>Facade: CheckUserAnonymized(userID)
+  alt standardAttributes != nil
+    Facade->>StdAttrs: UpdateStandardAttributes(ctx, RoleGreatest, userID, stdAttrs)
+    StdAttrs->>NoEvent_Std: UpdateStandardAttributes(RoleGreatest, ...)
+    NoEvent_Std->>Store: UpdateStandardAttributes(ctx, userID, stdAttrs)
+    Store->>DB: UPDATE standard_attributes, updated_at
+    DB-->>Store: OK
+    NoEvent_Std-->>StdAttrs: nil
+  end
+  alt customAttributes != nil
+    Facade->>CustomAttrs: UpdateAllCustomAttributes(ctx, RoleGreatest, userID, customAttrs)
+    CustomAttrs->>NoEvent_Custom: updateCustomAttributes(..., reprForm)
+    NoEvent_Custom->>Store: UpdateCustomAttributes(ctx, userID, storageForm)
+    Store->>DB: UPDATE custom_attributes, updated_at
+    DB-->>Store: OK
+    NoEvent_Custom-->>CustomAttrs: nil
+  end
+  Facade->>Events: DispatchEventOnCommit(UserProfilePreUpdate...)
+  Facade->>Events: DispatchEventOnCommit(UserProfileUpdated...)
+  Events-->>Facade: nil
+  Facade-->>GraphQL: nil
+  GraphQL-->>Client: { user }

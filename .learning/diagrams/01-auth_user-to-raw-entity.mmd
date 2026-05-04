@@ -1,0 +1,11 @@
+flowchart LR
+  subgraph db [_auth_user]
+    id[id]
+    std[standard_attributes]
+    custom[custom_attributes]
+  end
+  subgraph raw [lib/authn/user.User]
+    RawStd[StandardAttributes]
+    RawCustom[CustomAttributes]
+  end
+  db --> raw

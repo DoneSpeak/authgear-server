@@ -1,0 +1,24 @@
+sequenceDiagram
+  participant Client
+  participant Handler as SettingsProfileEditHandler
+  participant CustomAttrs as CustomAttrsService
+  participant NoEvent as CustomAttrsServiceNoEvent
+  participant UserQueries
+  participant Store as user.Store
+  participant DB as _auth_user
+  participant Events as EventService
+
+  Client->>Handler: POST save (form: pointer->value)
+  Handler->>CustomAttrs: UpdateCustomAttributesWithForm(ctx, RoleEndUser, userID, form)
+  CustomAttrs->>NoEvent: UpdateCustomAttributesWithForm(role, userID, form)
+  Note over NoEvent: 见文档「custom_attributes 安全落库」
+  NoEvent->>NoEvent: updateCustomAttributes: validate, GetRaw, Update(accessControl, role), toStorageForm
+  NoEvent->>Store: UpdateCustomAttributes(ctx, userID, storageForm)
+  Store->>DB: UPDATE custom_attributes, updated_at
+  DB-->>Store: OK
+  Store-->>NoEvent: nil
+  NoEvent-->>CustomAttrs: nil
+  CustomAttrs->>Events: DispatchEventOnCommit(UserProfilePreUpdate...)
+  Events-->>CustomAttrs: nil
+  CustomAttrs-->>Handler: nil
+  Handler-->>Client: Redirect

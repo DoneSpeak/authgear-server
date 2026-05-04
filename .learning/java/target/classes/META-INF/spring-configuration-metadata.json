@@ -1,0 +1,22 @@
+{
+  "groups": [
+    {
+      "name": "app.user-profile",
+      "type": "learning.userprofile.config.UserProfileProperties",
+      "sourceType": "learning.userprofile.config.UserProfileProperties"
+    }
+  ],
+  "properties": [
+    {
+      "name": "app.user-profile.custom-attributes",
+      "type": "learning.userprofile.config.CustomAttributesConfig",
+      "sourceType": "learning.userprofile.config.UserProfileProperties"
+    },
+    {
+      "name": "app.user-profile.standard-attributes",
+      "type": "learning.userprofile.config.StandardAttributesConfig",
+      "sourceType": "learning.userprofile.config.UserProfileProperties"
+    }
+  ],
+  "hints": []
+}

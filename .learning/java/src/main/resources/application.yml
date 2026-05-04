@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: user-profile-attributes
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+  datasource:
+    url: jdbc:h2:mem:auth_user;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+# For PostgreSQL with jsonb (optional):
+#  datasource:
+#    url: jdbc:postgresql://localhost:5432/mydb
+#  jpa:
+#    database-platform: org.hibernate.dialect.PostgreSQLDialect
+#    properties:
+#      hibernate:
+#        types:
+#          json: org.hibernate.type.JsonType  # if needed for jsonb
+
+# User profile config (mirrors Authgear user_profile)
+app:
+  user-profile:
+    standard_attributes:
+      population:
+        strategy: on_signup
+      access_control:
+        - pointer: /email
+          access_control:
+            end_user: HIDDEN
+            bearer: READONLY
+            portal_ui: READWRITE
+        - pointer: /given_name
+          access_control:
+            end_user: READWRITE
+            bearer: READONLY
+            portal_ui: READWRITE
+    custom_attributes:
+      attributes:
+        - id: company_id
+          pointer: /x_company_id
+          type: STRING
+          access_control:
+            end_user: HIDDEN
+            bearer: HIDDEN
+            portal_ui: READWRITE
+        - id: score
+          pointer: /x_score
+          type: INTEGER
+          minimum: 0
+          maximum: 100
+          access_control:
+            portal_ui: READWRITE

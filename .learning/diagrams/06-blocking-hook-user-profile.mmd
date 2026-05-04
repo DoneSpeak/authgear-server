@@ -1,0 +1,31 @@
+sequenceDiagram
+  participant EventSvc as EventService
+  participant Sink as HookSink
+  participant Hook as CustomerHook
+  participant Blocking as UserProfilePreUpdate payload
+  participant EffectCtx as MutationsEffectContext
+  participant StdAttrs as StandardAttributesService
+  participant CustomAttrs as CustomAttributesService
+  participant Store as user.Store
+  participant DB as _auth_user
+
+  Note over EventSvc: 事务 commit 后
+  EventSvc->>Sink: RunBlockingEvent(UserProfilePreUpdate, payload)
+  Sink->>Hook: HTTP 请求 hook
+  Hook-->>Sink: { is_allowed, mutations: { user: { standard_attributes, custom_attributes, ... } } }
+  Sink->>Blocking: ApplyHookResponse(response)
+  Blocking->>Blocking: ApplyUserMutations(UserModel, response.Mutations.User)
+  Blocking-->>Sink: MutationsEverApplied
+  Sink->>Blocking: PerformEffects(ctx, effectCtx)
+  Blocking->>EffectCtx: PerformEffectsOnUser(ctx, effectCtx, userID, userMutations)
+  EffectCtx->>StdAttrs: UpdateStandardAttributes(ctx, RoleGreatest, userID, mutations.StandardAttributes)
+  EffectCtx->>CustomAttrs: UpdateAllCustomAttributes(ctx, RoleGreatest, userID, mutations.CustomAttributes)
+  Note over StdAttrs,CustomAttrs: 再次走与 6.1/6.2 相同的校验与落库
+  StdAttrs->>Store: (经 NoEvent 校验后) UpdateStandardAttributes
+  CustomAttrs->>Store: (经 NoEvent 校验后) UpdateCustomAttributes
+  Store->>DB: UPDATE standard_attributes / custom_attributes
+  DB-->>Store: OK
+  Store-->>EffectCtx: nil
+  EffectCtx-->>Blocking: nil
+  Blocking-->>Sink: nil
+  Sink-->>EventSvc: nil
