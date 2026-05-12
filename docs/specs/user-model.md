@@ -7,7 +7,7 @@
     * [Anonymous Identity](#anonymous-identity)
       * [Anonymous Identity JWT](#anonymous-identity-jwt)
       * [Anonymous Identity JWT headers](#anonymous-identity-jwt-headers)
-      * [Anonymous Identity JWT payload](#anonymous-identity-jwt-payload)
+      * [Anonymous Identity JWT payloadse](#anonymous-identity-jwt-payload)
       * [Anonymous Identity Promotion](#anonymous-identity-promotion)
     * [Biometric Identity](#biometric-identity)
       * [Biometric Identity JWT](#biometric-identity-jwt)

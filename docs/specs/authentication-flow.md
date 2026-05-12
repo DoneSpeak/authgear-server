@@ -1,52 +1,52 @@
 - [Authentication Flow](#authentication-flow)
-  * [Goals](#goals)
-  * [Non-goals](#non-goals)
-  * [Concepts](#concepts)
-    + [Signup Flow in essence](#signup-flow-in-essence)
-    + [Login Flow in essence](#login-flow-in-essence)
-    + [Reauth Flow in essence](#reauth-flow-in-essence)
-  * [Design](#design)
-    + [Design Principles](#design-principles)
-    + [Design of the configuration](#design-of-the-configuration)
-    + [type: signup](#type-signup)
-    + [type: login](#type-login)
-    + [type: signup_login](#type-signup_login)
-    + [type: reauth](#type-reauth)
-    + [type: account_recovery](#type-account_recovery)
-  * [Use case examples](#use-case-examples)
-    + [Use case example 1: Latte](#use-case-example-1-latte)
-    + [Use case example 2: Uber](#use-case-example-2-uber)
-    + [Use case example 3: Google](#use-case-example-3-google)
-    + [Use case example 4: The Club](#use-case-example-4-the-club)
-    + [Use case example 5: Manulife MPF](#use-case-example-5-manulife-mpf)
-    + [Use case example 6: Comprehensive example](#use-case-example-6-comprehensive-example)
-  * [HTTP API](#http-api)
-    + [The response](#the-response)
-    + [Create a Authentication Flow](#create-a-authentication-flow)
-    + [Execute the Authentication Flow](#execute-the-authentication-flow)
-    + [Get the Authentication Flow](#get-the-authentication-flow)
-  * [Mobile apps using Auth UI](#mobile-apps-using-auth-ui)
-    + [Ordinary Authentication Flow](#ordinary-authentication-flow)
-    + [Authentication Flow involving OAuth](#authentication-flow-involving-oauth)
-    + [Authentication Flow involving passkey](#authentication-flow-involving-passkey)
-  * [Mobile apps using a Custom UI](#mobile-apps-using-a-custom-ui)
-    + [Ordinary Authentication Flow](#ordinary-authentication-flow-1)
-    + [Authentication Flow involving OAuth](#authentication-flow-involving-oauth-1)
-    + [Authentication Flow involving passkey](#authentication-flow-involving-passkey-1)
-  * [Mobile apps using native UI](#mobile-apps-using-native-ui)
-    + [The start and the end of a Authentication Flow](#the-start-and-the-end-of-a-authentication-flow)
-    + [Facebook Login](#facebook-login)
-    + [Sign in with Apple](#sign-in-with-apple)
-    + [Any other OAuth providers supported by Authgear](#any-other-oauth-providers-supported-by-authgear)
-  * [Appendix](#appendix)
-    + [Review on the authentication UI / UX of existing consumer apps](#review-on-the-authentication-ui--ux-of-existing-consumer-apps)
-    + [Review on the design of various competitors](#review-on-the-design-of-various-competitors)
+  - [Goals](#goals)
+  - [Non-goals](#non-goals)
+  - [Concepts](#concepts)
+    - [Signup Flow in essence](#signup-flow-in-essence)
+    - [Login Flow in essence](#login-flow-in-essence)
+    - [Reauth Flow in essence](#reauth-flow-in-essence)
+  - [Design](#design)
+    - [Design Principles](#design-principles)
+    - [Design of the configuration](#design-of-the-configuration)
+    - [type: signup](#type-signup)
+    - [type: login](#type-login)
+    - [type: signup_login](#type-signup_login)
+    - [type: reauth](#type-reauth)
+    - [type: account_recovery](#type-account_recovery)
+  - [Use case examples](#use-case-examples)
+    - [Use case example 1: Latte](#use-case-example-1-latte)
+    - [Use case example 2: Uber](#use-case-example-2-uber)
+    - [Use case example 3: Google](#use-case-example-3-google)
+    - [Use case example 4: The Club](#use-case-example-4-the-club)
+    - [Use case example 5: Manulife MPF](#use-case-example-5-manulife-mpf)
+    - [Use case example 6: Comprehensive example](#use-case-example-6-comprehensive-example)
+  - [HTTP API](#http-api)
+    - [The response](#the-response)
+    - [Create a Authentication Flow](#create-a-authentication-flow)
+    - [Execute the Authentication Flow](#execute-the-authentication-flow)
+    - [Get the Authentication Flow](#get-the-authentication-flow)
+  - [Mobile apps using Auth UI](#mobile-apps-using-auth-ui)
+    - [Ordinary Authentication Flow](#ordinary-authentication-flow)
+    - [Authentication Flow involving OAuth](#authentication-flow-involving-oauth)
+    - [Authentication Flow involving passkey](#authentication-flow-involving-passkey)
+  - [Mobile apps using a Custom UI](#mobile-apps-using-a-custom-ui)
+    - [Ordinary Authentication Flow](#ordinary-authentication-flow-1)
+    - [Authentication Flow involving OAuth](#authentication-flow-involving-oauth-1)
+    - [Authentication Flow involving passkey](#authentication-flow-involving-passkey-1)
+  - [Mobile apps using native UI](#mobile-apps-using-native-ui)
+    - [The start and the end of a Authentication Flow](#the-start-and-the-end-of-a-authentication-flow)
+    - [Facebook Login](#facebook-login)
+    - [Sign in with Apple](#sign-in-with-apple)
+    - [Any other OAuth providers supported by Authgear](#any-other-oauth-providers-supported-by-authgear)
+  - [Appendix](#appendix)
+    - [Review on the authentication UI / UX of existing consumer apps](#review-on-the-authentication-ui--ux-of-existing-consumer-apps)
+    - [Review on the design of various competitors](#review-on-the-design-of-various-competitors)
       - [Auth0](#auth0)
       - [Okta](#okta)
       - [Azure AD B2C](#azure-ad-b2c)
       - [Zitadel](#zitadel)
       - [Supertokens](#supertokens)
-    + [JSON schema](#json-schema)
+    - [JSON schema](#json-schema)
 
 # Authentication Flow
 
@@ -76,12 +76,14 @@ How Authentication Flow is implemented is intentionally left unspecified in this
 This section clarifies how Authentication Flow is related to our core concepts, like User, Identity, and Authenticator.
 
 ### Signup Flow in essence
+
 - Generate a new user ID for the User.
 - Create 1 or more Identities. Later on, the User identify themselves with one of the Identities.
 - Create 0 or more Authenticators. The User authenticates themselves with one of the Authenticators if needed.
 - (Optional) Collect user profile (i.e. standard attributes and custom attributes)
 
 ### Login Flow in essence
+
 - Identify the User with an Identity.
 - Depending on the Identity, authenticate the User with their Authenticators.
 - (Optional) Further authenticate the User with **other** Authenticators.
@@ -89,6 +91,7 @@ This section clarifies how Authentication Flow is related to our core concepts, 
 Suppose the User has a Email Login ID Identity `johndoe@gmail.com`, a Email OOB-OTP Authenticator `johndoe@gmail.com`, a Phone Login ID Identity `+85298765432`, a Phone OOB-OTP Authenticator `+85298765432`, a Password Authenticator, and a OAuth Identity `johndoe@gmail.com`.
 
 If the User identifies themselves with the Email Login ID Identity `johndoe@gmail.com`, then the User can authenticate themselves with:
+
 1. Email OOB-OTP Authenticator `johndoe@gmail.com`
 2. Password Authenticator
 3. Phone OOB-OTP Authenticator `+85298765432`. Note that this Authenticator is NOT associated with the identifying Identity, but it can also be used to authenticate the User.
@@ -96,8 +99,8 @@ If the User identifies themselves with the Email Login ID Identity `johndoe@gmai
 If the User identifies themselves with the OAuth Identity `johndoe@gmail.com`, then the User DOES NOT need to authenticate themselves. This is how most other applications work.
 
 ### Reauth Flow in essence
-- Authenticate the User with any Authenticators.
 
+- Authenticate the User with any Authenticators.
 
 ## Design
 
@@ -710,21 +713,21 @@ Content-Type: application/json
 
 ### Ordinary Authentication Flow
 
-[![](https://mermaid.ink/img/pako:eNqNU9tq20AQ_ZVhnxoax9BHQQImdkIopcVyKBRB2OyOpKXWjrqXtmnIv3dWliXFoiUvusyec-bsXJ6FIo0iEx5_RLQK10ZWTjaFBWilC0aZVtoAq7Y9DeXrj6ehe49uVaENM3oMdYXSpThLweLqKvEzkHzAeKNkwHcOtXGowv327rJgY81F8yQ5sThLPMZ3vCFJBtEjrPKv-LgaZQzZHL3nF5CD6-gDNTv56JPEQO2EjqYyuN3sYEnJy4dlepIzf7Dz2kNgcZJ521uFQLCcSb-faG9-o4oB4bVFuNnTLwhmD2h14ltijDNVHYDKCX1XI6yxlHHP5b0D7cxP9MBSULLCzOPinyb76ymyvm_QW6oxgb-pFmPTXicYGr7FEJ2FY5UPxUgzOG3x6OXL53w0E-g72rmVqa7D0qGvHzooSKtBKsXj8DBw5zmm9-WJcsaW9P8sU1Sn1wm2bQb96OWB5_m6lrZKUy092ctJ_1GfiXPRoGuk0bx7z0mnEHzeYCEy_tSHjheisC8Mja1m1kabQE5kpdx7PBdsmPInq0QWXMQjqN_fAcXr941o_MdO5NNh6bvdf_kLVbVgzQ?type=png)](https://mermaid.live/edit#pako:eNqNU9tq20AQ_ZVhnxoax9BHQQImdkIopcVyKBRB2OyOpKXWjrqXtmnIv3dWliXFoiUvusyec-bsXJ6FIo0iEx5_RLQK10ZWTjaFBWilC0aZVtoAq7Y9DeXrj6ehe49uVaENM3oMdYXSpThLweLqKvEzkHzAeKNkwHcOtXGowv327rJgY81F8yQ5sThLPMZ3vCFJBtEjrPKv-LgaZQzZHL3nF5CD6-gDNTv56JPEQO2EjqYyuN3sYEnJy4dlepIzf7Dz2kNgcZJ521uFQLCcSb-faG9-o4oB4bVFuNnTLwhmD2h14ltijDNVHYDKCX1XI6yxlHHP5b0D7cxP9MBSULLCzOPinyb76ymyvm_QW6oxgb-pFmPTXicYGr7FEJ2FY5UPxUgzOG3x6OXL53w0E-g72rmVqa7D0qGvHzooSKtBKsXj8DBw5zmm9-WJcsaW9P8sU1Sn1wm2bQb96OWB5_m6lrZKUy092ctJ_1GfiXPRoGuk0bx7z0mnEHzeYCEy_tSHjheisC8Mja1m1kabQE5kpdx7PBdsmPInq0QWXMQjqN_fAcXr941o_MdO5NNh6bvdf_kLVbVgzQ)
+
 
 ### Authentication Flow involving OAuth
 
-[![](https://mermaid.ink/img/pako:eNqNVGFr2zAQ_SuHPq2sbWAfDekITVbKGBtxymAYgiKfbVFb50nyuq70v-9kO46TNCVfYlt579270929CEUpikg4_N2gUTjXMreySgxALa3XStfSeJjV9eFRPP96ePTg0M5yNP6I3vgiR2kPz--I8hLDKQeAq5uboBqBZDiraCU9frCYaovKPyzvpwnbra6rZ8l2xEXgMb7lDaEjaBzCLP6Jm9lORpOJ0Tl-AFm4bZynaiU3LkgM1FZoazWCu8UKJhS8fJqEX7L6X-e1h8DVQeRlbxU8weRI-uNIe_EXVeMR9i3Cl5KewOsS0KSBb4gxVueFB8pG9FWBMMdMNiUX_R5Sq_-gA5aCjBXeiNwVusspb9-vuZJddp-3FV43Vk_l6Kr2ww8a7XPvkrrYXPiW1gM48NXJ6jhHEyXLciPV4yQf2uDUXfz4Hq9Oks66D0cVPhVoMXxYdE31ZvWP9E6n0LeGIuP6lj-nk0bws3zvGn4_wDAsS_SNNbDt0C6VMNXj8TisZG_G0yOaYytjXYsZV6tYt1CQJgWpFI_SeuAexxjnG5pCm4zejzJGtXqtYF1H0I9t7LnNbgtp8rARpCMzHd0ephfiUlRoK6lT3mYvQScR_H-FiYj4Ne2mJRGJeWVoU6fMWqTakxVRJkuHl4INU_xslIi8bXAL6jfigOLF9Yto942tyLdujbbb9PU_HuvYRA?type=png)](https://mermaid.live/edit#pako:eNqNVGFr2zAQ_SuHPq2sbWAfDekITVbKGBtxymAYgiKfbVFb50nyuq70v-9kO46TNCVfYlt579270929CEUpikg4_N2gUTjXMreySgxALa3XStfSeJjV9eFRPP96ePTg0M5yNP6I3vgiR2kPz--I8hLDKQeAq5uboBqBZDiraCU9frCYaovKPyzvpwnbra6rZ8l2xEXgMb7lDaEjaBzCLP6Jm9lORpOJ0Tl-AFm4bZynaiU3LkgM1FZoazWCu8UKJhS8fJqEX7L6X-e1h8DVQeRlbxU8weRI-uNIe_EXVeMR9i3Cl5KewOsS0KSBb4gxVueFB8pG9FWBMMdMNiUX_R5Sq_-gA5aCjBXeiNwVusspb9-vuZJddp-3FV43Vk_l6Kr2ww8a7XPvkrrYXPiW1gM48NXJ6jhHEyXLciPV4yQf2uDUXfz4Hq9Oks66D0cVPhVoMXxYdE31ZvWP9E6n0LeGIuP6lj-nk0bws3zvGn4_wDAsS_SNNbDt0C6VMNXj8TisZG_G0yOaYytjXYsZV6tYt1CQJgWpFI_SeuAexxjnG5pCm4zejzJGtXqtYF1H0I9t7LnNbgtp8rARpCMzHd0ephfiUlRoK6lT3mYvQScR_H-FiYj4Ne2mJRGJeWVoU6fMWqTakxVRJkuHl4INU_xslIi8bXAL6jfigOLF9Yto942tyLdujbbb9PU_HuvYRA)
+
 
 ### Authentication Flow involving passkey
 
-[![](https://mermaid.ink/img/pako:eNqNVG1r2zAQ_iuHPq2sWWAfDS2EJBtljI04ZTAMRZHPtogteXpZl5X-950UO3HsresXv0jP89yju9M9MaFzZAmz-MOjEriSvDS8yRRAy42TQrZcOVi07XgpXX0aL91bNIsSlZvQvatK5OZvhLBG8jC7vQ2aCXACk4YU3OEbg7k0KNz95u4mI7PNu-bAyQy7CjzCR94pcALeIizSb7hbnGWkVilaSy_QBpbeOt1s-c4GiRM1CvVGE_i43sJcBy_v5-GpjfyN0WsHgdko8qazCk7DfCL9dqC9_oXCO4RLi_Ch1o_gZA2o8sBXmjBGlpUDXQzo2wphhQX3NWXwDnIjf6IFkoKCFPrI48Qsayn2MT0tt3aPh5HFHp4MbWGU9UHuUboKdlI36IwUL6Xu65d0CwtLu-FYG7StVvZ_ubO-wYszXGBn_0x0VyIRQhwb7zUVHcBfVc9z402TFpt2g84bBX2nHAsa7tawTUcp6s04vUc1tTLUNVgYtNVDhAJXOXAhqKUfTtxpjOF5QwWlKvTLUYaoqBcF2zaB7vqkjlpiWXFVhpvJrVY3w2bJr9g1a9A0XOY0U56CTsZov8GMJfSZH7s2Y5l6Jqhvc2Ktc-m0YUnBa4vXjAzr9KAES5zx2IO6uXRC0fj4rvX5H6PI5-MwizPt-Q8iAKv-?type=png)](https://mermaid.live/edit#pako:eNqNVG1r2zAQ_iuHPq2sWWAfDS2EJBtljI04ZTAMRZHPtogteXpZl5X-950UO3HsresXv0jP89yju9M9MaFzZAmz-MOjEriSvDS8yRRAy42TQrZcOVi07XgpXX0aL91bNIsSlZvQvatK5OZvhLBG8jC7vQ2aCXACk4YU3OEbg7k0KNz95u4mI7PNu-bAyQy7CjzCR94pcALeIizSb7hbnGWkVilaSy_QBpbeOt1s-c4GiRM1CvVGE_i43sJcBy_v5-GpjfyN0WsHgdko8qazCk7DfCL9dqC9_oXCO4RLi_Ch1o_gZA2o8sBXmjBGlpUDXQzo2wphhQX3NWXwDnIjf6IFkoKCFPrI48Qsayn2MT0tt3aPh5HFHp4MbWGU9UHuUboKdlI36IwUL6Xu65d0CwtLu-FYG7StVvZ_ubO-wYszXGBn_0x0VyIRQhwb7zUVHcBfVc9z402TFpt2g84bBX2nHAsa7tawTUcp6s04vUc1tTLUNVgYtNVDhAJXOXAhqKUfTtxpjOF5QwWlKvTLUYaoqBcF2zaB7vqkjlpiWXFVhpvJrVY3w2bJr9g1a9A0XOY0U56CTsZov8GMJfSZH7s2Y5l6Jqhvc2Ktc-m0YUnBa4vXjAzr9KAES5zx2IO6uXRC0fj4rvX5H6PI5-MwizPt-Q8iAKv-)
+
 
 ## Mobile apps using a Custom UI
 
 ### Ordinary Authentication Flow
 
-[![](https://mermaid.ink/img/pako:eNqNU21L3EAQ_ivDfqroVfBjQOE4r-UQUS5KoQTCupncLU124r5QrfjfO7sml3hXpV_yMvu87e7Mi1BUociEw8eARuGllhsr28IAdNJ6rXQnjYd51-2X8sur_dIiOE_t_eqAHfx2g9LGOivB7OIi0jOQvICGcdLjF4uVtqj8_Xp1XnCu9mv7LNlXHEUe4xNv8MggOIR5_gMf5qOKJpOjc_wCsj32Tj64qDAwk8wQKYPvyzs4pZjk7DQ-yeo_mJL2EJgx4XhivO6Dgid4KlWql0GXwepPfJZPqIJHeJ8WvjX0G7xuAE0V2YYY02DtgeqJ50I2zT-p89vVQdgPsg67VGQcy-xnnX1wKBP4_7iMF_dOf3fna_TBGhiO-m0rsQuntzwmub3JxyiefqE5DDLVtVhbdNsyQUGaCqRS3BLljnvoMd0td5XVpqbPXaaopJcEuy6Dvv1yzy292EqziY0tHZnzye1hdSRORIu2lbri6XuJOoXg9RYLkfFnhbUMjS9EYV4ZGrqKWctKe7Iiq2Xj8ERwYMqfjRKZtwEHUD_BOxRP4E-i8R-TyPXb2Kfpf_0LAHlhuA?type=png)](https://mermaid.live/edit#pako:eNqNU21L3EAQ_ivDfqroVfBjQOE4r-UQUS5KoQTCupncLU124r5QrfjfO7sml3hXpV_yMvu87e7Mi1BUociEw8eARuGllhsr28IAdNJ6rXQnjYd51-2X8sur_dIiOE_t_eqAHfx2g9LGOivB7OIi0jOQvICGcdLjF4uVtqj8_Xp1XnCu9mv7LNlXHEUe4xNv8MggOIR5_gMf5qOKJpOjc_wCsj32Tj64qDAwk8wQKYPvyzs4pZjk7DQ-yeo_mJL2EJgx4XhivO6Dgid4KlWql0GXwepPfJZPqIJHeJ8WvjX0G7xuAE0V2YYY02DtgeqJ50I2zT-p89vVQdgPsg67VGQcy-xnnX1wKBP4_7iMF_dOf3fna_TBGhiO-m0rsQuntzwmub3JxyiefqE5DDLVtVhbdNsyQUGaCqRS3BLljnvoMd0td5XVpqbPXaaopJcEuy6Dvv1yzy292EqziY0tHZnzye1hdSRORIu2lbri6XuJOoXg9RYLkfFnhbUMjS9EYV4ZGrqKWctKe7Iiq2Xj8ERwYMqfjRKZtwEHUD_BOxRP4E-i8R-TyPXb2Kfpf_0LAHlhuA)
+
 
 ### Authentication Flow involving OAuth
 
@@ -756,7 +759,7 @@ It follows naturally that we need to support a new grant type in the token endpo
 
 When an Authentication Flow ends, it includes a `code` in the data.
 This `code` is one-time use, just like an ordinary `authorization_code`.
-The intended usage of this `code` is to call the token endpoint with grant type [`urn:authgear:params:oauth:grant-type:authorization_code`](./oidc.md#urnauthgearparamsoauthgrant-typeauthorization_code)
+The intended usage of this `code` is to call the token endpoint with grant type `[urn:authgear:params:oauth:grant-type:authorization_code](./oidc.md#urnauthgearparamsoauthgrant-typeauthorization_code)`
 
 ### Facebook Login
 
@@ -768,31 +771,33 @@ Mobile apps that use Facebook Login typically use Facebook SDK.
 > Therefore, a long-lived token **CANNOT** be obtained in the mobile app.
 > So the approach outlined here requires the mobile app to send the short-lived access token to Authgear.
 
-[![](https://mermaid.ink/img/pako:eNp9UstqwzAQ_JVFZ-cHfAgE0pTQFkpDL8WXrbSORWxJlVYJJeTfK79SO6W5CHt3dnZmmbOQVpHIRaCvSEbSWuPeY1MYAIeetdQODcPKudvSBiV9WnvYrZ_-oCNXe0L_38ijR1etXrdtPzHDYrmc0uXwHuhagGe716aFTiCwaGfSbA5vxNEbCJX1vKj1kRSglBQCsD2Qme4YdeWwI5NgXYFM0oesLWxqe4KtcZHhpLmC1LtPO9DN9I_eehP3KNILJbGsIAby4LwtdU1ToyPX4PaqfrA8HcsAjUpPSK48hVhz1raOvYTZWh3giLVWcwu390QIsZsqYz2_k-kPlbY4awKJTDTkG9QqxejckhYioRsqRJ4-FZWY1BSiMJcEjU4h04PSbL3IS6wDZQIj2923kSJnH2kEDVG8olKEPqz9_aeO5KXPbxfjyw-yHfui?type=png)](https://mermaid.live/edit#pako:eNp9UstqwzAQ_JVFZ-cHfAgE0pTQFkpDL8WXrbSORWxJlVYJJeTfK79SO6W5CHt3dnZmmbOQVpHIRaCvSEbSWuPeY1MYAIeetdQODcPKudvSBiV9WnvYrZ_-oCNXe0L_38ijR1etXrdtPzHDYrmc0uXwHuhagGe716aFTiCwaGfSbA5vxNEbCJX1vKj1kRSglBQCsD2Qme4YdeWwI5NgXYFM0oesLWxqe4KtcZHhpLmC1LtPO9DN9I_eehP3KNILJbGsIAby4LwtdU1ToyPX4PaqfrA8HcsAjUpPSK48hVhz1raOvYTZWh3giLVWcwu390QIsZsqYz2_k-kPlbY4awKJTDTkG9QqxejckhYioRsqRJ4-FZWY1BSiMJcEjU4h04PSbL3IS6wDZQIj2923kSJnH2kEDVG8olKEPqz9_aeO5KXPbxfjyw-yHfui)
+
 
 ### Sign in with Apple
 
 iOS apps that use Sign in with Apple typically use [ASAuthorizationController](https://developer.apple.com/documentation/authenticationservices/asauthorizationcontroller).
 
-[![](https://mermaid.ink/img/pako:eNqNVNtuEzEQ_ZWRn9N8wIpGQg2gPiCkBnhAkTbGns1aOLaxZ6lC1X9n7L00t6a8eb1njs-cuTwJ5TWKSiT83aFTuDRyG-Vu7QCCjGSUCdIRvA_h9Mp8WZ2hOmq3KOOFaIv5kg9ws1hMwApWaFExmUZHpjFKkvEO1kLmkNr4VDu--oNrUeKHOLgpLCFU8IDURQey_MskA8VH6x8hYgreJYRHQy1oSRI2znOam8wmFTNLwjE75_lssSHwTU_-CR3GjJCg4j6QZ29Cy09Yu4eEqosIUTrtd7BJxMDN_N3PuFgh57zKgnw0f4ueYsH98iHbnGheRAB5YM2jJDCu_8w6N_OsSOOpxtFBdr-Cb5xZjrj6Vp_7CeTOO4reWiy1YrJzRy-T3kUspZL2_xz8jtE0-9EduL19k3deoNezP-wfp18pvnGhu5z9-Zt9_9H-q_-F3EzM-WaIPPZT47EhB6NQXIlm2_a2TNoHb3IF75fcDPz0adoHLC-93xfKYgVLD3l-QbXSbYcuV9awwtro2XjkRo1IMzhSXOfAWUm1tN9gr8WhEyaVQztEbHia2pomh6RSmFI96b42nKkr4KbLg3NtUtdOzMQO404azWvpKROvBeN3vAIqPmpsZGcp74NnhnaBpwU_aEM-iqqRNuFMcKJ-tXdKVBQ7HEHDaptQvJp-eP_yjYXkc78Py1p8_gcFvtXb?type=png)](https://mermaid.live/edit#pako:eNqNVNtuEzEQ_ZWRn9N8wIpGQg2gPiCkBnhAkTbGns1aOLaxZ6lC1X9n7L00t6a8eb1njs-cuTwJ5TWKSiT83aFTuDRyG-Vu7QCCjGSUCdIRvA_h9Mp8WZ2hOmq3KOOFaIv5kg9ws1hMwApWaFExmUZHpjFKkvEO1kLmkNr4VDu--oNrUeKHOLgpLCFU8IDURQey_MskA8VH6x8hYgreJYRHQy1oSRI2znOam8wmFTNLwjE75_lssSHwTU_-CR3GjJCg4j6QZ29Cy09Yu4eEqosIUTrtd7BJxMDN_N3PuFgh57zKgnw0f4ueYsH98iHbnGheRAB5YM2jJDCu_8w6N_OsSOOpxtFBdr-Cb5xZjrj6Vp_7CeTOO4reWiy1YrJzRy-T3kUspZL2_xz8jtE0-9EduL19k3deoNezP-wfp18pvnGhu5z9-Zt9_9H-q_-F3EzM-WaIPPZT47EhB6NQXIlm2_a2TNoHb3IF75fcDPz0adoHLC-93xfKYgVLD3l-QbXSbYcuV9awwtro2XjkRo1IMzhSXOfAWUm1tN9gr8WhEyaVQztEbHia2pomh6RSmFI96b42nKkr4KbLg3NtUtdOzMQO404azWvpKROvBeN3vAIqPmpsZGcp74NnhnaBpwU_aEM-iqqRNuFMcKJ-tXdKVBQ7HEHDaptQvJp-eP_yjYXkc78Py1p8_gcFvtXb)
+
 
 ### Any other OAuth providers supported by Authgear
 
 These providers include Google, GitHub, etc.
 
 Prerequisite
+
 - The developer visit the portal of the provider and set a `redirect_uri` of custom URI scheme, e.g. `com.myapp://callback`. This redirect approach is recommended in RFC 8252 Appendix B.
 
-[![](https://mermaid.ink/img/pako:eNqVVF1PGzEQ_CsrP7USkPdTSRXR9omKioAqVZHCxt5LrN7Zrj-gFPHfu_Yll9wF0fLmj_HMeLzrJyGtIlGJQL8SGUmfNK49tgsD4NBHLbVDE2Hm3HjpNpCfrcnEI2yKmzWhH69f5Y1v3t5rRWWTSeF0Ou0PVDCnhmQEBpioay0xamtgISwyZGl4ek8LUc5uz8BpYXCugmuKyRvAspcJtse_NPYBPAVnTSCIG4xAv13WQQPauBTB1iySk-jIUbIQRtpd21geN1QXYNG6YK7oE3OwFGR31us_nd7t9eXZh5Wf3vAOj6FNIYK0JqJmd5GJMC80mj0utWIXiu0p7dnSMnl9Lm171j5Wk4nEplmh_Jk9KBq72sXXP0QFV47My47gQccNZ5MYDJjR8G42_06rYVhzCiGfmMAFu7btDa7C-yzWixTJwVPm5Dv3RbooRFvGBQfu4M37SxxVQwnZ6_WmpDxSOHBJvcooliPGwUJXKAdZ7U1b6BJHftl96B9zPZwPglyWEhmmMS6_t1L9R601NuwvvX08XYMhUqRer43D1uIye7k3uh4oBXKXbd39q8FCkpILpU7Nq722MOJEtORb1Iq_mKdMuxCMb7nPKh4qqjE1MTfdM0OTU3yFz0pH60VVYxPoRHBqdv5opKi432gH2n5TPYo_mB_W7udUSL52f1v54p7_At9Ev6c?type=png)](https://mermaid.live/edit#pako:eNqVVF1PGzEQ_CsrP7USkPdTSRXR9omKioAqVZHCxt5LrN7Zrj-gFPHfu_Yll9wF0fLmj_HMeLzrJyGtIlGJQL8SGUmfNK49tgsD4NBHLbVDE2Hm3HjpNpCfrcnEI2yKmzWhH69f5Y1v3t5rRWWTSeF0Ou0PVDCnhmQEBpioay0xamtgISwyZGl4ek8LUc5uz8BpYXCugmuKyRvAspcJtse_NPYBPAVnTSCIG4xAv13WQQPauBTB1iySk-jIUbIQRtpd21geN1QXYNG6YK7oE3OwFGR31us_nd7t9eXZh5Wf3vAOj6FNIYK0JqJmd5GJMC80mj0utWIXiu0p7dnSMnl9Lm171j5Wk4nEplmh_Jk9KBq72sXXP0QFV47My47gQccNZ5MYDJjR8G42_06rYVhzCiGfmMAFu7btDa7C-yzWixTJwVPm5Dv3RbooRFvGBQfu4M37SxxVQwnZ6_WmpDxSOHBJvcooliPGwUJXKAdZ7U1b6BJHftl96B9zPZwPglyWEhmmMS6_t1L9R601NuwvvX08XYMhUqRer43D1uIye7k3uh4oBXKXbd39q8FCkpILpU7Nq722MOJEtORb1Iq_mKdMuxCMb7nPKh4qqjE1MTfdM0OTU3yFz0pH60VVYxPoRHBqdv5opKi432gH2n5TPYo_mB_W7udUSL52f1v54p7_At9Ev6c)
+
 
 ## Appendix
 
 ### Review on the authentication UI / UX of existing consumer apps
 
 This notion records the authentication flows of existing consumer apps in Hong Kong.
-https://www.notion.so/oursky/Common-Signup-Login-Flows-f62e48724dc041d29aa0a77ec1dae806
+[https://www.notion.so/oursky/Common-Signup-Login-Flows-f62e48724dc041d29aa0a77ec1dae806](https://www.notion.so/oursky/Common-Signup-Login-Flows-f62e48724dc041d29aa0a77ec1dae806)
 
 Some important observations drawn from this review.
+
 - Most consumer apps do not support 2FA.
 - The authentication method is not necessarily tied to the identification method. For example, in The Club app, user can first enter their email address, and then receive a Phone OTP to sign in.
 
@@ -800,11 +805,11 @@ Some important observations drawn from this review.
 
 #### Auth0
 
-Auth0 offers Triggers, Actions and Flows. https://auth0.com/docs/customize/actions/flows-and-triggers Auth0 does not support fully customized flows. Instead, it defines some Triggers, and allow the developer to write their own Actions to build Flows.
+Auth0 offers Triggers, Actions and Flows. [https://auth0.com/docs/customize/actions/flows-and-triggers](https://auth0.com/docs/customize/actions/flows-and-triggers) Auth0 does not support fully customized flows. Instead, it defines some Triggers, and allow the developer to write their own Actions to build Flows.
 
 #### Okta
 
-Okta is based on Workflows. But the Workflows it offer are mainly for building business workflows, instead of customizing the authentication flow. In the documentation, it only documents how to customize a step in the authentication flow. https://help.okta.com/wf/en-us/Content/Topics/Workflows/connector-builder/authentication-custom.htm
+Okta is based on Workflows. But the Workflows it offer are mainly for building business workflows, instead of customizing the authentication flow. In the documentation, it only documents how to customize a step in the authentication flow. [https://help.okta.com/wf/en-us/Content/Topics/Workflows/connector-builder/authentication-custom.htm](https://help.okta.com/wf/en-us/Content/Topics/Workflows/connector-builder/authentication-custom.htm)
 
 #### Azure AD B2C
 
@@ -819,7 +824,7 @@ Azure AD B2C allows customization via custom policy. Custom policy is configured
 
 Therefore, the end-user goes through the User Journey, with more and more Claims being collected in each Orchestration Step.
 
-https://learn.microsoft.com/en-us/azure/active-directory-b2c/custom-policy-overview
+[https://learn.microsoft.com/en-us/azure/active-directory-b2c/custom-policy-overview](https://learn.microsoft.com/en-us/azure/active-directory-b2c/custom-policy-overview)
 
 #### Zitadel
 
@@ -840,11 +845,11 @@ Zitadel is experimenting with a new Resource-based API. The Resource-based API h
 
 More complicated flows could be supported by supporting more `checks`, as proposed by [this comment](https://github.com/zitadel/zitadel/discussions/5875#discussioncomment-5985323)
 
-https://github.com/zitadel/zitadel/discussions/5922
+[https://github.com/zitadel/zitadel/discussions/5922](https://github.com/zitadel/zitadel/discussions/5922)
 
 #### Supertokens
 
-Supertokens requires the developer to host a backend server to interactive with the Core Driver Interface (CDI) https://app.swaggerhub.com/apis/supertokens/CDI/2.21.1 The CDI is not very flexible. For example, it only supports some pre-defined recipe like EmailPassword Recipe, Passwordless Recipe.
+Supertokens requires the developer to host a backend server to interactive with the Core Driver Interface (CDI) [https://app.swaggerhub.com/apis/supertokens/CDI/2.21.1](https://app.swaggerhub.com/apis/supertokens/CDI/2.21.1) The CDI is not very flexible. For example, it only supports some pre-defined recipe like EmailPassword Recipe, Passwordless Recipe.
 
 ### JSON schema
 

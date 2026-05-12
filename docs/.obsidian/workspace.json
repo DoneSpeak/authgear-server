@@ -63,8 +63,7 @@
               "title": "user-model"
             }
           }
-        ],
-        "currentTab": 3
+        ]
       }
     ],
     "direction": "vertical"
@@ -226,13 +225,13 @@
       "bases:Create new base": false
     }
   },
-  "active": "61432bf8cd0535bb",
+  "active": "84ff171ddd139394",
   "lastOpenFiles": [
+    "specs/user-profile/design.md",
+    "specs/user-model.md",
     "specs/bot-protection.md",
     "Makefile",
-    "specs/user-profile/design.md",
     "specs/glossary.md",
-    "specs/user-model.md",
     "_sidebar.md",
     "index.html",
     "specs/authentication-flow-api-reference.md"
