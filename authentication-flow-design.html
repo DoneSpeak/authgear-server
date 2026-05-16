@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authgear Authentication Flow 设计文档</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            margin-top: 30px;
+        }
+        h3 {
+            color: #7f8c8d;
+            margin-top: 20px;
+        }
+        .flow-diagram {
+            background-color: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .code-block {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        .mermaid {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .highlight {
+            background-color: #f39c12;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        .alert {
+            background-color: #e74c3c;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .info-box {
+            background-color: #3498db;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .example-box {
+            background-color: #2ecc71;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .architecture-box {
+            border: 2px solid #3498db;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .architecture-box h3 {
+            color: #3498db;
+        }
+        .timeline {
+            border-left: 4px solid #3498db;
+            padding-left: 20px;
+            margin: 20px 0;
+        }
+        .timeline-item {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        .sequence-diagram {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Authgear Authentication Flow 设计文档</h1>
+        
+        <div class="info-box">
+            <strong>说明：</strong>本文档详细分析了 Authgear 的 authentication flow 设计，特别是 primary_password + oob_totp 登录流程，并在 Spring Boot 4 中实现这套架构。
+        </div>
+
+        <!-- 目录 -->
+        <h2>目录</h2>
+        <ol>
+            <li><a href="#overview">架构概览</a></li>
+            <li><a href="#core-components">核心组件</a></li>
+            <li><a href="#intent-milestone">Intent & Milestone 机制</a></li>
+            <li><a href="#state-machine">状态机设计</a></li>
+            <li><a href="#primary-password">Primary Password + OOB TOTP 登录流程</a></li>
+            <li><a href="#declarative">声明式配置系统</a></li>
+            <li><a href="#spring-boot">Spring Boot 4 实现方案</a></li>
+            <li><a href="#code-examples">代码示例</a></li>
+            <li><a href="#performance">性能和扩展性</a></li>
+        </ol>
+
+        <!-- 1. 架构概览 -->
+        <h2 id="overview">架构概览</h2>
+        
+        <div class="architecture-box">
+            <h3>Authgear Authentication Flow 整体架构</h3>
+            <p>Authgear 采用声明式的认证流程系统，基于状态机模式设计，具有高度可配置性和扩展性。</p>
+            
+            <div class="flow-diagram">
+                <h4>核心架构图</h4>
+                <div class="mermaid">
+                    graph TB
+                        A[客户端请求] --> B[Authentication Service]
+                        B --> C[Flow Manager]
+                        C --> D[Intent 处理器]
+                        D --> E[Node 执行器]
+                        E --> F[Milestone 状态管理]
+                        F --> G[Store 存储]
+                        G --> H[数据库/Redis]
+                        
+                        I[Web UI] --> B
+                        J[移动端] --> B
+                        K[第三方应用] --> B
+                </div>
+            </div>
+            
+            <div class="info-box">
+                <strong>设计理念：</strong>
+                <ul>
+                    <li>声明式配置：通过配置文件定义认证流程</li>
+                    <li>状态机驱动：基于状态机的流程控制</li>
+                    <li>事件驱动：通过输入事件驱动状态转换</li>
+                    <li>依赖注入：通过 Dependencies 注入各种服务依赖</li>
+                    <li>效果分离：将副作用效果与业务逻辑分离</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 2. 核心组件 -->
+        <h2 id="core-components">核心组件</h2>
+        
+        <div class="architecture-box">
+            <h3>核心组件结构</h3>
+            
+            <h4>Intent - 意图接口</h4>
+            <div class="code-block">
+                <strong>功能：</strong>定义认证流程的入口和逻辑<br>
+                <strong>作用：</strong>处理流程的初始化和状态转换
+                <pre>interface Intent {
+    String getIntentType();
+    InputSchema canReactTo(AuthenticationContext context);
+    ReactToResult reactTo(AuthenticationContext context, Input input);
+}</pre>
+            </div>
+
+            <h4>Milestone - 里程碑接口</h4>
+            <div class="code-block">
+                <strong>功能：</strong>标记流程中的重要状态点<br>
+                <strong>作用：</strong>流程控制和状态查询
+                <pre>interface Milestone {
+    String getMilestoneType();
+    boolean isMilestoneReached();
+}</pre>
+            </div>
+
+            <h4>Node - 节点接口</h4>
+            <div class="code-block">
+                <strong>功能：</strong>实现具体的认证步骤和行为<br>
+                <strong>作用：</strong>处理用户输入和数据操作
+                <pre>interface Node {
+    NodeType getType();
+    NodeSimple getSimple();
+    SubFlow getSubFlow();
+}</pre>
+            </div>
+
+            <h4>Flow - 流程实体</h4>
+            <div class="code-block">
+                <strong>功能：</strong>管理认证流程的完整状态<br>
+                <strong>作用：</strong>流程状态持久化和恢复
+                <pre>class Flow {
+    private String flowId;
+    private String stateToken;
+    private Intent intent;
+    private List&lt;Node&gt; nodes;
+    private Session session;
+}</pre>
+            </div>
+        </div>
+
+        <!-- 3. Intent & Milestone 机制 -->
+        <h2 id="intent-milestone">Intent & Milestone 机制</h2>
+        
+        <div class="architecture-box">
+            <h3>Intent 系统设计</h3>
+            <p>Intent 是认证流程的入口点，负责流程的初始化和状态转换。</p>
+            
+            <div class="timeline">
+                <div class="timeline-item">
+                    <strong>IntentLoginFlow：</strong>处理登录流程的初始化和状态转换
+                </div>
+                <div class="timeline-item">
+                    <strong>IntentSignupFlow：</strong>处理注册流程的初始化和状态转换
+                </div>
+                <div class="timeline-item">
+                    <strong>IntentReauthFlow：</strong>处理重新认证流程
+                </div>
+            </div>
+
+            <h3>Milestone 机制</h3>
+            <p>Milestone 用于标记流程中的重要状态点，支持流程控制和状态查询。</p>
+            
+            <div class="code-block">
+                <strong>主要里程碑类型：</strong>
+                <pre>// 流程控制里程碑
+interface MilestoneDoCreateSession extends Milestone {
+    Session getSession();
+}
+
+// 数据提供里程碑
+interface MilestoneDidAuthenticate extends Milestone {
+    Authentication getAuthentication();
+    List&lt;String&gt; getAMR();
+}
+
+// 约束提供里程碑
+interface MilestoneConstraintsProvider extends Milestone {
+    Constraints getConstraints();
+}
+</pre>
+            </div>
+
+            <div class="example-box">
+                <strong>示例：里程碑在流程中的作用</strong>
+                <p>当用户完成密码认证时，系统会设置 <code>MilestoneDidAuthenticate</code> 里程碑，表示认证已完成。后续流程会检查这个里程碑来决定下一步的操作。</p>
+            </div>
+        </div>
+
+        <!-- 4. 状态机设计 -->
+        <h2 id="state-machine">状态机设计</h2>
+        
+        <div class="architecture-box">
+            <h3>状态机整体架构</h3>
+            
+            <div class="sequence-diagram">
+                <div class="mermaid">
+                    stateDiagram-v2
+                        [*] --> Start
+                        Start --> Identify: 用户输入
+                        Identify --> Authenticate: 身份识别完成
+                        Authenticate --> PrimaryAuth: 主认证
+                        PrimaryAuth --> SecondaryAuth: 需要次认证
+                        SecondaryAuth --> Complete: 认证完成
+                        PrimaryAuth --> Complete: 认证完成
+                        Complete --> [*]
+                        
+                        state "PrimaryAuth" as PrimaryAuth {
+                            [*] --> PasswordInput
+                            PasswordInput --> PasswordVerify
+                            PasswordVerify --> [*]
+                        }
+                        
+                        state "SecondaryAuth" as SecondaryAuth {
+                            [*] --> TOTPInput
+                            TOTPInput --> TOTPVerify
+                            TOTPVerify --> [*]
+                        }
+                </div>
+            </div>
+
+            <h3>状态转换机制</h3>
+            <div class="code-block">
+                <strong>流程执行循环：</strong>
+                <pre>public FlowState processInput(String flowId, Input input) {
+    // 1. 获取当前流程状态
+    Flow flow = flowRepository.findById(flowId);
+    
+    // 2. 查找当前 InputReactor
+    InputReactor reactor = findCurrentInputReactor(flow);
+    
+    // 3. 验证输入数据
+    InputSchema schema = reactor.canReactTo(context);
+    
+    // 4. 执行 ReactTo 逻辑
+    ReactToResult result = reactor.reactTo(context, input);
+    
+    // 5. 生成新的节点或子流程
+    if (result.isSubFlow()) {
+        createSubFlow(result);
+    } else if (result.isNode()) {
+        createNode(result);
+    }
+    
+    // 6. 执行效果
+    executeEffects(result.getEffects());
+    
+    return updateFlowState(flow);
+}</pre>
+            </div>
+        </div>
+
+        <!-- 5. Primary Password + OOB TOTP 登录流程 -->
+        <h2 id="primary-password">Primary Password + OOB TOTP 登录流程</h2>
+        
+        <div class="architecture-box">
+            <h3>完整的状态机流程</h3>
+            
+            <div class="sequence-diagram">
+                <div class="mermaid">
+                    flowchart TD
+                        A[开始登录] --> B[用户输入邮箱/手机号]
+                        B --> C[身份验证]
+                        C --> D{是否需要主认证？}
+                        D -->|是| E[主认证：密码验证]
+                        D -->|否| F[账户状态检查]
+                        
+                        E --> G[用户输入密码]
+                        G --> H[验证密码]
+                        H --> I{密码验证成功？}
+                        I -->|是| J[设置认证里程碑]
+                        I -->|否| K[返回认证失败]
+                        
+                        J --> L{是否需要次认证？}
+                        L -->|是| M[次认证：TOTP验证]
+                        L -->|否| F
+                        
+                        M --> N[用户输入TOTP代码]
+                        N --> O[验证TOTP代码]
+                        O --> P{TOTP验证成功？}
+                        P -->|是| Q[设置完成里程碑]
+                        P -->|否| R[返回认证失败]
+                        
+                        Q --> F
+                        F --> S[终止其他会话]
+                        S --> T[创建会话]
+                        T --> U[登录完成]
+                        
+                        K --> V[错误处理]
+                        R --> V
+                </div>
+            </div>
+
+            <h3>关键节点实现</h3>
+            
+            <div class="code-block">
+                <strong>NodeAuthenticatePassword 实现：</strong>
+                <pre>public class NodeAuthenticatePassword implements Node {
+    @Override
+    @Transactional
+    public ReactToResult reactTo(AuthenticationContext context, Input input) {
+        // 1. 获取用户的密码认证器
+        AuthenticatorInfo info = getPasswordAuthenticator(context);
+        
+        // 2. 验证密码
+        AuthenticatorSpec spec = new AuthenticatorSpec.Builder()
+            .password(input.getPassword())
+            .build();
+            
+        VerificationResult result = authenticatorService.verify(context, info, spec);
+        
+        // 3. 返回已验证的认证器节点
+        if (result.isSuccess()) {
+            return new ReactToResultBuilder()
+                .node(new NodeVerifiedAuthenticator(info))
+                .milestone(new MilestoneDidAuthenticate(info))
+                .build();
+        } else {
+            return new ReactToResultBuilder()
+                .error(new AuthenticationException("Invalid credentials"))
+                .build();
+        }
+    }
+}</pre>
+            </div>
+
+            <div class="code-block">
+                <strong>NodeAuthenticationTOTP 实现：</strong>
+                <pre>public class NodeAuthenticationTOTP implements Node {
+    @Override
+    @Transactional
+    public ReactToResult reactTo(AuthenticationContext context, Input input) {
+        // 1. 获取用户的 TOTP 认证器
+        AuthenticatorInfo info = getTOTPAuthenticator(context);
+        
+        // 2. 验证 TOTP 代码
+        AuthenticatorSpec spec = new AuthenticatorSpec.Builder()
+            .totpCode(input.getTOTPCode())
+            .build();
+            
+        VerificationResult result = authenticatorService.verify(context, info, spec);
+        
+        // 3. 返回已验证的认证器节点
+        if (result.isSuccess()) {
+            return new ReactToResultBuilder()
+                .node(new NodeVerifiedAuthenticator(info))
+                .milestone(new MilestoneDidAuthenticate(info))
+                .build();
+        } else {
+            return new ReactToResultBuilder()
+                .error(new AuthenticationException("Invalid TOTP code"))
+                .build();
+        }
+    }
+}</pre>
+            </div>
+
+            <div class="example-box">
+                <strong>里程碑设置时机：</strong>
+                <ul>
+                    <li><code>MilestoneDidAuthenticate</code>：当密码认证成功时设置</li>
+                    <li><code>MilestoneDoCreateSession</code>：当认证完成时设置</li>
+                    <li><code>MilestoneFlowComplete</code>：当所有认证步骤完成时设置</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 6. 声明式配置系统 -->
+        <h2 id="declarative">声明式配置系统</h2>
+        
+        <div class="architecture-box">
+            <h3>配置结构设计</h3>
+            
+            <div class="code-block">
+                <strong>配置文件示例：</strong>
+                <pre>authgear:
+  authentication-flow:
+    flows:
+      login:
+        name: "login_flow"
+        steps:
+          - type: "identify"
+            name: "identify_step"
+            one_of:
+              - identification: "email"
+                bot_protection:
+                  mode: "never"
+                steps:
+                  - type: "authenticate"
+                    name: "primary_auth"
+                    one_of:
+                      - authentication: "primary_password"
+                      - authentication: "primary_oob_totp"
+                  - type: "authenticate"
+                    name: "secondary_auth"
+                    one_of:
+                      - authentication: "secondary_totp"
+                      - authentication: "secondary_oob_email"
+                    verification_required: true
+          - type: "check_account_status"
+          - type: "terminate_other_sessions"</pre>
+            </div>
+
+            <h3>配置生成机制</h3>
+            <div class="code-block">
+                <strong>配置生成器：</strong>
+                <pre>@Configuration
+public class AuthenticationFlowConfiguration {
+    
+    @Bean
+    public FlowConfiguration flowConfiguration(AuthenticationFlowProperties properties) {
+        FlowConfiguration config = new FlowConfiguration();
+        
+        // 生成登录流程配置
+        if (properties.getFlows().getLogin().isEnabled()) {
+            config.addFlow("login", generateLoginFlow(properties));
+        }
+        
+        // 生成注册流程配置
+        if (properties.getFlows().getSignup().isEnabled()) {
+            config.addFlow("signup", generateSignupFlow(properties));
+        }
+        
+        return config;
+    }
+    
+    private FlowConfiguration generateLoginFlow(AuthenticationFlowProperties properties) {
+        FlowConfiguration config = new FlowConfiguration();
+        
+        // 添加识别步骤
+        config.addStep(new IdentifyStep(properties.getIdentification()));
+        
+        // 添加认证步骤
+        config.addStep(new AuthenticateStep(properties.getAuthentication()));
+        
+        // 添加账户检查步骤
+        config.addStep(new AccountCheckStep());
+        
+        return config;
+    }
+}</pre>
+            </div>
+        </div>
+
+        <!-- 7. Spring Boot 4 实现方案 -->
+        <h2 id="spring-boot">Spring Boot 4 实现方案</h2>
+        
+        <div class="architecture-box">
+            <h3>项目结构</h3>
+            
+            <div class="code-block">
+                <strong>Maven 依赖：</strong>
+                <pre>&lt;dependencies&gt;
+    &lt;!-- Spring Boot Starters --&gt;
+    &lt;dependency&gt;
+        &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+        &lt;artifactId&gt;spring-boot-starter-web&lt;/artifactId&gt;
+    &lt;/dependency&gt;
+    &lt;dependency&gt;
+        &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+        &lt;artifactId&gt;spring-boot-starter-data-redis&lt;/artifactId&gt;
+    &lt;/dependency&gt;
+    &lt;dependency&gt;
+        &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+        &lt;artifactId&gt;spring-boot-starter-validation&lt;/artifactId&gt;
+    &lt;/dependency&gt;
+    
+    &lt;!-- Spring Data JPA --&gt;
+    &lt;dependency&gt;
+        &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+        &lt;artifactId&gt;spring-boot-starter-data-jpa&lt;/artifactId&gt;
+    &lt;/dependency&gt;
+    
+    &lt;!-- 数据库 --&gt;
+    &lt;dependency&gt;
+        &lt;groupId&gt;org.postgresql&lt;/groupId&gt;
+        &lt;artifactId&gt;postgresql&lt;/artifactId&gt;
+        &lt;scope&gt;runtime&lt;/scope&gt;
+    &lt;/dependency&gt;
+&lt;/dependencies&gt;</pre>
+            </div>
+
+            <h3>核心服务实现</h3>
+            <div class="code-block">
+                <strong>FlowService 实现：</strong>
+                <pre>@Service
+@Transactional
+public class FlowService {
+    
+    private final FlowRepository flowRepository;
+    private final SessionRepository sessionRepository;
+    private final Dependencies dependencies;
+    
+    @Autowired
+    public FlowService(FlowRepository flowRepository, 
+                     SessionRepository sessionRepository,
+                     Dependencies dependencies) {
+        this.flowRepository = flowRepository;
+        this.sessionRepository = sessionRepository;
+        this.dependencies = dependencies;
+    }
+    
+    public FlowResponse createFlow(FlowType type, String name, SessionOptions options) {
+        // 创建会话
+        Session session = sessionRepository.create(options);
+        
+        // 根据类型创建 Intent
+        Intent intent = createIntent(type, name);
+        
+        // 创建流程
+        Flow flow = new Flow(generateFlowId(), intent, session);
+        flowRepository.save(flow);
+        
+        // 返回响应
+        return new FlowResponse(
+            flow.getStateToken(),
+            type,
+            name,
+            null
+        );
+    }
+    
+    public FlowResponse feedInput(String stateToken, Input input) {
+        // 获取流程
+        Flow flow = flowRepository.findByStateToken(stateToken);
+        
+        // 获取当前 InputReactor
+        InputReactor reactor = findCurrentInputReactor(flow);
+        
+        // 处理输入
+        ReactToResult result = reactor.reactTo(flow, input);
+        
+        // 执行效果
+        executeEffects(result.getEffects());
+        
+        // 更新流程状态
+        updateFlow(flow, result);
+        
+        // 返回响应
+        return new FlowResponse(
+            flow.getStateToken(),
+            flow.getType(),
+            flow.getName(),
+            result.getAction()
+        );
+    }
+}</pre>
+            </div>
+
+            <div class="example-box">
+                <strong>依赖注入配置：</strong>
+                <pre>@Configuration
+public class DependenciesConfig {
+    
+    @Bean
+    public Dependencies dependencies() {
+        return new Dependencies(
+            userService(),
+            authenticatorService(),
+            otpService(),
+            sessionService(),
+            eventService()
+        );
+    }
+    
+    @Bean
+    public UserService userService() {
+        return new UserService(userRepository());
+    }
+    
+    @Bean
+    public AuthenticatorService authenticatorService() {
+        return new AuthenticatorService(authenticatorRepository());
+    }
+    
+    @Bean
+    public OTPService otpService() {
+        return new OTPService(redisTemplate());
+    }
+}</pre>
+            </div>
+        </div>
+
+        <!-- 8. 代码示例 -->
+        <h2 id="code-examples">代码示例</h2>
+        
+        <div class="architecture-box">
+            <h3>完整的主密码 + TOTP 登录流程实现</h3>
+            
+            <div class="code-block">
+                <strong>LoginIntent 实现：</strong>
+                <pre>@Component
+public class LoginIntent implements Intent {
+    
+    @Override
+    public String getIntentType() {
+        return "login";
+    }
+    
+    @Override
+    @Transactional
+    public InputSchema canReactTo(AuthenticationContext context) {
+        // 检查是否已创建会话
+        if (getSessionService().hasActiveSession(context)) {
+            return null; // 返回 null 表示流程结束
+        }
+        
+        // 检查是否达到创建会话里程碑
+        if (hasMilestone(context, MilestoneDoCreateSession.class)) {
+            return null;
+        }
+        
+        return new LoginInputSchema();
+    }
+    
+    @Override
+    @Transactional
+    public ReactToResult reactTo(AuthenticationContext context, Input input) {
+        switch (context.getCurrentState().getStepIndex()) {
+            case 0:
+                // 第一步：预初始化
+                return handlePreInitialize(context);
+            case 1:
+                // 第二步：主认证
+                return handlePrimaryAuthentication(context, input);
+            case 2:
+                // 第三步：次认证
+                return handleSecondaryAuthentication(context, input);
+            case 3:
+                // 第四步：创建会话
+                return handleCreateSession(context);
+            default:
+                throw new IllegalStateException("Invalid state");
+        }
+    }
+    
+    private ReactToResult handlePreInitialize(AuthenticationContext context) {
+        // 创建预初始化节点
+        NodePreInitialize node = new NodePreInitialize();
+        return new ReactToResultBuilder()
+            .node(node)
+            .milestone(node)
+            .build();
+    }
+    
+    private ReactToResult handlePrimaryAuthentication(AuthenticationContext context, Input input) {
+        // 处理主认证逻辑
+        if (input instanceof LoginPasswordInput) {
+            return handlePasswordAuthentication(context, (LoginPasswordInput) input);
+        } else if (input instanceof LoginTOTPInput) {
+            return handleTOTPAuthentication(context, (LoginTOTPInput) input);
+        }
+        
+        throw new IllegalArgumentException("Unsupported input type");
+    }
+    
+    private ReactToResult handlePasswordAuthentication(AuthenticationContext context, LoginPasswordInput input) {
+        // 验证密码
+        AuthenticatorInfo info = getAuthenticatorService().verifyPassword(
+            context.getUserId(), 
+            input.getPassword()
+        );
+        
+        if (info == null) {
+            return new ReactToResultBuilder()
+                .error(new AuthenticationException("Invalid password"))
+                .build();
+        }
+        
+        return new ReactToResultBuilder()
+            .node(new NodeVerifiedAuthenticator(info))
+            .milestone(new MilestoneDidAuthenticate(info))
+            .build();
+    }
+    
+    private ReactToResult handleSecondaryAuthentication(AuthenticationContext context, Input input) {
+        // 处理次认证逻辑（TOTP）
+        if (input instanceof LoginTOTPInput) {
+            LoginTOTPInput totpInput = (LoginTOTPInput) input;
+            
+            AuthenticatorInfo info = getAuthenticatorService().verifyTOTP(
+                context.getUserId(),
+                totpInput.getTOTPCode()
+            );
+            
+            if (info == null) {
+                return new ReactToResultBuilder()
+                    .error(new AuthenticationException("Invalid TOTP code"))
+                    .build();
+            }
+            
+            return new ReactToResultBuilder()
+                .node(new NodeVerifiedAuthenticator(info))
+                .milestone(new MilestoneDidAuthenticate(info))
+                .build();
+        }
+        
+        throw new IllegalArgumentException("Unsupported input type");
+    }
+    
+    private ReactToResult handleCreateSession(AuthenticationContext context) {
+        // 创建会话
+        Session session = getSessionService().createSession(
+            context.getUserId(),
+            SessionType.LOGIN
+        );
+        
+        return new ReactToResultBuilder()
+            .node(new NodeDoCreateSession(session))
+            .milestone(new MilestoneDoCreateSession(session))
+            .build();
+    }
+}</pre>
+            </div>
+        </div>
+
+        <!-- 9. 性能和扩展性 -->
+        <h2 id="performance">性能和扩展性</h2>
+        
+        <div class="architecture-box">
+            <h3>并发处理策略</h3>
+            <div class="code-block">
+                <strong>异步处理：</strong>
+                <pre>@Configuration
+@EnableAsync
+@EnableScheduling
+public class AsyncConfig implements AsyncConfigurer {
+    
+    @Override
+    public Executor getAsyncExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(10);
+        executor.setMaxPoolSize(50);
+        executor.setQueueCapacity(100);
+        executor.setThreadNamePrefix("AuthFlow-Async-");
+        executor.initialize();
+        return executor;
+    }
+}
+
+@Service
+public class AsyncFlowProcessor {
+    
+    @Async
+    @Transactional
+    public CompletableFuture<FlowState> processAsync(String flowId, Input input) {
+        // 异步处理流程
+        return CompletableFuture.completedFuture(process(flowId, input));
+    }
+}</pre>
+            </div>
+
+            <h3>缓存策略</h3>
+            <div class="code-block">
+                <strong>Redis 缓存：</strong>
+                <pre>@Service
+public class FlowCacheService {
+    
+    @Cacheable(value = "flows", key = "#stateToken")
+    public Flow getFlow(String stateToken) {
+        // 从缓存或数据库获取
+    }
+    
+    @CacheEvict(value = "flows", key = "#stateToken")
+    public void evictFlow(String stateToken) {
+        // 清除缓存
+    }
+    
+    @CachePut(value = "flows", key = "#stateToken")
+    public Flow updateFlow(String stateToken, Flow flow) {
+        // 更新缓存
+        return flowRepository.save(flow);
+    }
+}</pre>
+            </div>
+
+            <h3>数据库事务管理</h3>
+            <div class="code-block">
+                <strong>事务策略：</strong>
+                <pre>@Service
+@Transactional
+public class FlowService {
+    
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Flow createFlow(Intent intent, Session session) {
+        // 创建新流程
+    }
+    
+    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
+    public FlowState feedInput(String flowId, Input input) {
+        // 处理输入
+    }
+    
+    @Transactional(noRollbackFor = {FlowCompletedException.class})
+    public void completeFlow(String flowId) {
+        // 完成流程
+    }
+}</pre>
+            </div>
+
+            <div class="alert">
+                <strong>注意：</strong>在实现高性能认证系统时，请考虑以下优化措施：
+                <ul>
+                    <li>使用连接池管理数据库连接</li>
+                    <li>实现合理的缓存策略</li>
+                    <li>避免过度使用同步操作</li>
+                    <li>合理设置事务边界</li>
+                    <li>监控和优化慢查询</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 总结 -->
+        <h2>总结</h2>
+        
+        <div class="info-box">
+            <p>Authgear 的 authentication flow 设计采用声明式配置、状态机驱动和事件处理机制，提供了高度可配置和可扩展的认证解决方案。在 Spring Boot 4 中实现这套架构时，我们需要关注以下关键点：</p>
+            <ul>
+                <li>使用 Spring IoC 容器管理依赖注入</li>
+                <li>实现状态机模式的状态转换逻辑</li>
+                <li>使用 Redis 进行状态持久化</li>
+                <li>实现声明式配置的解析和执行</li>
+                <li>考虑并发安全和性能优化</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+</body>
+</html>
