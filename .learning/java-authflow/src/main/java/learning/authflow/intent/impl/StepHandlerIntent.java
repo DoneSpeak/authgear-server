@@ -8,12 +8,14 @@ import learning.authflow.input.AuthflowInput;
 import learning.authflow.intent.Intent;
 import learning.authflow.intent.InputSchema;
 import learning.authflow.intent.ReactResult;
+import learning.authflow.milestone.Milestone;
 import learning.authflow.model.StepType;
 import learning.authflow.step.StepHandler;
 import learning.authflow.step.StepResult;
 import learning.authflow.storage.SessionStorage;
 import lombok.RequiredArgsConstructor;
 
+import java.io.Serializable;
 import java.util.Map;
 
 /**
@@ -44,7 +46,13 @@ public class StepHandlerIntent implements Intent {
                 return null;
             }
         }
-        // 当前步骤未完成，需要输入
+        // 检查是否已经尝试过处理（通过里程碑）
+        if (context.hasMilestone(StepHandlerAttemptedMilestone.class)) {
+            // 已经尝试过处理，说明 Handler 返回了 complete(false)
+            // 现在应该等待新输入，返回不同的 schema 表示需要下一阶段输入
+            return new StepWaitingSchema(stepType);
+        }
+        // 首次调用，返回标准 schema
         return new StepInputSchema(stepType);
     }
 
@@ -82,6 +90,8 @@ public class StepHandlerIntent implements Intent {
             context.advanceToNextStep();
             return ReactResult.complete();
         } else {
+            // 步骤未完成，记录已尝试过
+            context.addMilestone(new StepHandlerAttemptedMilestone());
             return ReactResult.needInput();
         }
     }
@@ -94,7 +104,14 @@ public class StepHandlerIntent implements Intent {
     }
 
     /**
-     * Step 输入模式
+     * 标记 StepHandler 已尝试处理的里程碑
+     */
+    public static class StepHandlerAttemptedMilestone implements Milestone, Serializable {
+        private static final long serialVersionUID = 1L;
+    }
+
+    /**
+     * 标准步骤输入模式（首次调用）
      */
     @RequiredArgsConstructor
     public static class StepInputSchema implements InputSchema {
@@ -107,7 +124,29 @@ public class StepHandlerIntent implements Intent {
 
         @Override
         public Map<String, Object> getProperties() {
-            return Map.of("stepType", stepType.name());
+            return Map.of("stepType", stepType.name(), "stage", "initial");
+        }
+    }
+
+    /**
+     * 步骤等待模式（已尝试过，等待下一阶段输入）
+     */
+    @RequiredArgsConstructor
+    public static class StepWaitingSchema implements InputSchema {
+        private final StepType stepType;
+
+        @Override
+        public String getType() {
+            return "step:" + stepType.name().toLowerCase() + ":waiting";
+        }
+
+        @Override
+        public Map<String, Object> getProperties() {
+            return Map.of(
+                "stepType", stepType.name(),
+                "stage", "waiting",
+                "message", "Please provide additional input (OTP/code)"
+            );
         }
     }
 }
