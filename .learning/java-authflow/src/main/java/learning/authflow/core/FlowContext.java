@@ -1,8 +1,13 @@
 package learning.authflow.core;
 
 import learning.authflow.intent.Intent;
+import learning.authflow.intent.impl.StepHandlerIntent;
 import learning.authflow.intent.registry.IntentRegistry;
 import learning.authflow.milestone.Milestone;
+import learning.authflow.model.StepType;
+import learning.authflow.step.StepHandler;
+import learning.authflow.step.registry.StepHandlerRegistry;
+import learning.authflow.storage.SessionStorage;
 import lombok.Getter;
 
 import java.util.ArrayDeque;
@@ -19,29 +24,86 @@ public class FlowContext {
     @Getter
     private final FlowInstance flow;
     private final IntentRegistry intentRegistry;
+    private final StepHandlerRegistry stepHandlerRegistry;
+    private final SessionStorage sessionStorage;
 
     private final Deque<IntentFrame> stack = new ArrayDeque<>();
 
-    public FlowContext(FlowInstance flow, IntentRegistry registry) {
+    public FlowContext(FlowInstance flow, IntentRegistry registry,
+                       StepHandlerRegistry stepHandlerRegistry, SessionStorage sessionStorage) {
         this.flow = flow;
         this.intentRegistry = registry;
+        this.stepHandlerRegistry = stepHandlerRegistry;
+        this.sessionStorage = sessionStorage;
     }
 
     /**
      * 从 FlowInstance 创建运行时上下文
      */
-    public static FlowContext from(FlowInstance flow, IntentRegistry registry) {
-        FlowContext ctx = new FlowContext(flow, registry);
+    public static FlowContext from(FlowInstance flow, IntentRegistry registry,
+                                   StepHandlerRegistry stepHandlerRegistry, SessionStorage sessionStorage) {
+        FlowContext ctx = new FlowContext(flow, registry, stepHandlerRegistry, sessionStorage);
         ctx.rebuildStack();
         return ctx;
     }
 
     /**
-     * 从序列化的 IntentNode 树重建运行时 Intent 栈
-     * TODO: 这个实现将在后续任务中完善
+     * 从当前节点重建运行时 Intent 栈
+     * 桥接旧 StepHandler 和新 Intent 架构
      */
     private void rebuildStack() {
-        // 目前为空实现，后续根据序列化结构重建
+        // 获取当前节点的步骤类型
+        StepType currentStepType = getCurrentStepType();
+        if (currentStepType == null) {
+            return;
+        }
+
+        // 查找对应的 StepHandler（使用 try-catch 避免异常中断）
+        try {
+            StepHandler handler = stepHandlerRegistry.get(currentStepType);
+            if (handler != null) {
+                // 创建桥接 Intent
+                Intent bridgeIntent = new StepHandlerIntent(
+                    currentStepType, handler, sessionStorage, flow.getFlowId()
+                );
+                stack.push(new IntentFrame(bridgeIntent));
+            }
+        } catch (UnsupportedOperationException e) {
+            // 如果没有对应的 handler，栈保持为空
+        }
+    }
+
+    /**
+     * 获取当前步骤类型
+     */
+    private StepType getCurrentStepType() {
+        int currentIndex = flow.getCurrentNodeIndex();
+        if (currentIndex >= 0 && currentIndex < flow.getNodes().size()) {
+            FlowNode node = flow.getNodes().get(currentIndex);
+            return node != null ? node.getStepType() : null;
+        }
+        return null;
+    }
+
+    /**
+     * 推进到下一个步骤（更新 FlowInstance 的当前节点索引）
+     */
+    public void advanceToNextStep() {
+        int nextIndex = flow.getCurrentNodeIndex() + 1;
+        if (nextIndex < flow.getNodes().size()) {
+            flow.setCurrentNodeIndex(nextIndex);
+        }
+        // 重建栈以处理新步骤
+        stack.clear();
+        rebuildStack();
+    }
+
+    /**
+     * 获取用户ID（从 Session）
+     */
+    public String getUserId() {
+        Session session = sessionStorage.getOrCreate(flow.getFlowId());
+        return session != null ? session.userId() : null;
     }
 
     /**

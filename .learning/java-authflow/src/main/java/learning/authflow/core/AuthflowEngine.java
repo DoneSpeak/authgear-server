@@ -5,13 +5,16 @@ import learning.authflow.exception.IntentExecutionException;
 import learning.authflow.exception.InvalidStateTokenException;
 import learning.authflow.flowdef.FlowDefinition;
 import learning.authflow.flowdef.FlowDefinitionProvider;
+import learning.authflow.flowdef.StepDefinition;
 import learning.authflow.input.AuthflowInput;
 import learning.authflow.intent.*;
 import learning.authflow.intent.registry.IntentRegistry;
 import learning.authflow.model.FlowType;
 import learning.authflow.model.NodeType;
 import learning.authflow.model.StepType;
+import learning.authflow.storage.SessionStorage;
 import learning.authflow.storage.StateStorage;
+import learning.authflow.step.registry.StepHandlerRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -37,6 +40,8 @@ public class AuthflowEngine {
     private final StateTokenManager stateTokenManager;
     private final IdGenerator idGenerator;
     private final FlowDefinitionProvider flowDefinitionProvider;
+    private final StepHandlerRegistry stepHandlerRegistry;
+    private final SessionStorage sessionStorage;
 
     /**
      * 执行 Accept 循环，处理输入并推进流程。
@@ -53,8 +58,8 @@ public class AuthflowEngine {
             throw new InvalidStateTokenException("Invalid or expired state token: " + stateToken);
         }
 
-        // 2. 创建运行时上下文
-        FlowContext context = FlowContext.from(flow, intentRegistry);
+        // 2. 创建运行时上下文（桥接旧 StepHandler 和新 Intent 架构）
+        FlowContext context = FlowContext.from(flow, intentRegistry, stepHandlerRegistry, sessionStorage);
 
         // 3. Accept-Loop 主循环
         int loopCount = 0;
@@ -93,13 +98,9 @@ public class AuthflowEngine {
                     continue;
 
                 case COMPLETE:
-                    // 当前 Reactor 完成，如果有父级 Intent 则回退
-                    if (context.hasParentIntent()) {
-                        context.popToParent();
-                        continue;
-                    }
-                    // 没有父级，整个流程完成
-                    break;
+                    // 当前 Reactor 完成，重建栈以处理下一个步骤
+                    // 继续循环执行下一步
+                    continue;
 
                 case NEED_INPUT:
                     // 需要输入，退出循环等待用户
@@ -184,14 +185,8 @@ public class AuthflowEngine {
         flow.setStateToken(stateTokenManager.generateToken());
         flow.setCurrentPath(new ArrayList<>());
 
-        // 3. 初始化线性结构 - 创建第一个节点（IDENTIFY）
-        FlowNode initialNode = new FlowNode();
-        initialNode.setNodeId("0");
-        initialNode.setType(NodeType.SIMPLE);
-        initialNode.setStepType(getInitialStepType(flowDef));
-        initialNode.setCompleted(false);
-        flow.getNodes().add(initialNode);
-        flow.setCurrentNodeIndex(0);
+        // 3. 初始化线性结构 - 预创建所有步骤节点
+        initializeFlowNodes(flow, flowDef);
 
         // 4. 创建根 IntentNode（用于序列化保存）
         IntentNode rootNode = new IntentNode();
@@ -213,5 +208,28 @@ public class AuthflowEngine {
             return flowDef.getSteps().get(0).getType();
         }
         return StepType.IDENTIFY; // 默认
+    }
+
+    /**
+     * 初始化流程节点 - 预创建所有步骤
+     */
+    private void initializeFlowNodes(FlowInstance flow, FlowDefinition flowDef) {
+        if (flowDef.getSteps() == null || flowDef.getSteps().isEmpty()) {
+            return;
+        }
+
+        // 为每个步骤定义创建节点
+        for (int i = 0; i < flowDef.getSteps().size(); i++) {
+            StepDefinition stepDef = flowDef.getSteps().get(i);
+            FlowNode node = new FlowNode();
+            node.setNodeId(String.valueOf(i));
+            node.setType(NodeType.SIMPLE);
+            node.setStepType(stepDef.getType());
+            node.setCompleted(false);
+            flow.getNodes().add(node);
+        }
+
+        // 设置当前节点为第一个未完成的节点
+        flow.setCurrentNodeIndex(0);
     }
 }
