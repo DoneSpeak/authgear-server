@@ -1,6 +1,7 @@
 package learning.authflow.intent.impl;
 
 import learning.authflow.core.FlowContext;
+import learning.authflow.core.FlowNode;
 import learning.authflow.core.Session;
 import learning.authflow.core.StepContext;
 import learning.authflow.input.AuthflowInput;
@@ -34,7 +35,16 @@ public class StepHandlerIntent implements Intent {
 
     @Override
     public InputSchema canReactTo(FlowContext context) {
-        // StepHandler 总是需要输入
+        // 检查当前步骤是否已完成
+        int currentIndex = context.getFlow().getCurrentNodeIndex();
+        if (currentIndex >= 0 && currentIndex < context.getFlow().getNodes().size()) {
+            FlowNode node = context.getFlow().getNodes().get(currentIndex);
+            if (node.isCompleted()) {
+                // 当前步骤已完成，返回 EOF (null)
+                return null;
+            }
+        }
+        // 当前步骤未完成，需要输入
         return new StepInputSchema(stepType);
     }
 
