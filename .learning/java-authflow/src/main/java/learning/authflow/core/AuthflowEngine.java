@@ -13,6 +13,9 @@ import learning.authflow.storage.StateStorage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.Map;
+
 /**
  * 认证流程引擎。
  * 使用 Accept-Loop 机制驱动 Intent 执行，直到需要用户输入或流程完成。
