@@ -1,5 +1,7 @@
 package learning.authflow.core;
 
+import learning.authflow.exception.AcceptLoopLimitExceededException;
+import learning.authflow.exception.IntentExecutionException;
 import learning.authflow.exception.InvalidStateTokenException;
 import learning.authflow.input.AuthflowInput;
 import learning.authflow.intent.*;
@@ -99,12 +101,21 @@ public class AuthflowEngine {
                     continue;
 
                 case ERROR:
-                    // 发生错误，抛出异常
-                    throw new RuntimeException(reactResult.getError());
+                    // 发生错误，抛出自定义异常
+                    Exception error = reactResult.getError();
+                    throw new IntentExecutionException(
+                        "Intent execution failed: " + error.getMessage(),
+                        error);
             }
 
             // 其他情况退出循环
             break;
+        }
+
+        // 检查是否因为达到最大循环次数而退出
+        if (loopCount >= MAX_LOOP) {
+            throw new AcceptLoopLimitExceededException(
+                "Accept loop exceeded maximum iterations (" + MAX_LOOP + ")");
         }
 
         // 4. 更新 state token 并保存
