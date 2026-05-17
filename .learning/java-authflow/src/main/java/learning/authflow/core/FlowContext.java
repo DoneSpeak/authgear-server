@@ -1,7 +1,7 @@
 package learning.authflow.core;
 
 import learning.authflow.intent.Intent;
-import learning.authflow.intent.IntentRegistry;
+import learning.authflow.intent.registry.IntentRegistry;
 import learning.authflow.milestone.Milestone;
 import lombok.Getter;
 
