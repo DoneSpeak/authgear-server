@@ -83,7 +83,16 @@ public class AuthflowEngine {
             }
 
             // 3.3 执行 ReactTo
-            ReactResult reactResult = reactor.reactTo(context, input);
+            ReactResult reactResult;
+            try {
+                reactResult = reactor.reactTo(context, input);
+            } catch (Exception e) {
+                // 保存当前状态（即使处理失败）
+                flow.setStateToken(stateTokenManager.generateToken());
+                stateStorage.createFlow(flow);
+                // 重新抛出异常
+                throw e;
+            }
 
             // 3.4 处理结果
             switch (reactResult.getType()) {
