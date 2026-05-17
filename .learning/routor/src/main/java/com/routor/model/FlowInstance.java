@@ -1,5 +1,7 @@
 package com.routor.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.util.*;
 
 /**
@@ -78,6 +80,7 @@ public class FlowInstance {
     /**
      * 检查是否已完成
      */
+    @JsonIgnore
     public boolean isComplete() {
         return state == State.COMPLETED || stack.isEmpty();
     }

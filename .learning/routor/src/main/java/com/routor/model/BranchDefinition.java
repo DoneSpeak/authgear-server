@@ -1,5 +1,7 @@
 package com.routor.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.util.List;
 
 /**
@@ -39,10 +41,12 @@ public class BranchDefinition {
     /**
      * 获取分支标识符（identification 或 authentication）
      */
+    @JsonIgnore
     public String getId() {
         return identification != null ? identification : authentication;
     }
 
+    @JsonIgnore
     public boolean hasSubSteps() {
         return steps != null && !steps.isEmpty();
     }

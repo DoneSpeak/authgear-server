@@ -1,5 +1,7 @@
 package com.routor.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.util.List;
 
 /**
@@ -36,10 +38,12 @@ public class StepDefinition {
         this.steps = steps;
     }
 
+    @JsonIgnore
     public boolean hasOneOf() {
         return oneOf != null && !oneOf.isEmpty();
     }
 
+    @JsonIgnore
     public boolean hasSubSteps() {
         return steps != null && !steps.isEmpty();
     }
