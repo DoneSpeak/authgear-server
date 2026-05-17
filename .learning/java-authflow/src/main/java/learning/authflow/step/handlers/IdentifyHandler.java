@@ -21,10 +21,16 @@ public class IdentifyHandler implements StepHandler {
 
     @Override
     public StepResult handle(StepContext ctx, AuthflowInput input) {
-        IdentifyInput identifyInput = input.as(IdentifyInput.class);
+        // 安全地解析输入
+        IdentifyInput identifyInput;
+        try {
+            identifyInput = input.as(IdentifyInput.class);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to parse identify input: " + e.getMessage(), e);
+        }
 
         // 验证输入
-        if (identifyInput.getIdentification() == null || identifyInput.getLoginId() == null) {
+        if (identifyInput == null || identifyInput.getIdentification() == null || identifyInput.getLoginId() == null) {
             throw new IllegalArgumentException("Missing required fields: identification or login_id");
         }
 
