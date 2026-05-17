@@ -107,8 +107,8 @@ public class AuthflowEngine {
                     continue;
 
                 case COMPLETE:
-                    // 当前 Reactor 完成，重建栈以处理下一个步骤
-                    // 继续循环执行下一步
+                    // 当前 Reactor 完成，推进到下一步并继续循环
+                    // 注意：advanceToNextStep() 会更新索引并重建栈
                     continue;
 
                 case NEED_INPUT:

@@ -52,7 +52,14 @@ public class StepHandlerIntent implements Intent {
             .build();
 
         // 调用旧的 StepHandler
-        StepResult result = handler.handle(stepCtx, input);
+        StepResult result;
+        try {
+            result = handler.handle(stepCtx, input);
+        } catch (Exception e) {
+            // 如果 handler 抛出异常，保存 session 并重新抛出
+            sessionStorage.save(stepCtx.getSession());
+            throw e;
+        }
 
         // 保存更新后的 Session
         sessionStorage.save(stepCtx.getSession());
@@ -61,7 +68,7 @@ public class StepHandlerIntent implements Intent {
         if (result.isComplete()) {
             // 标记当前节点完成
             markCurrentNodeComplete(context);
-            // 推进到下一步
+            // 推进到下一步（关键：这会更新 currentNodeIndex 并重建 Intent 栈）
             context.advanceToNextStep();
             return ReactResult.complete();
         } else {

@@ -73,7 +73,12 @@ public class AuthflowService {
 
         FlowNode currentNode = flow.getCurrentNode();
         if (currentNode == null) {
-            throw new IllegalStateException("No current node available");
+            // 如果没有当前节点，返回 FINISHED 状态
+            Action action = new Action();
+            action.setType(StepType.FINISHED);
+            action.setData(new ActionData());
+            response.setAction(action);
+            return response;
         }
         Action action = new Action();
         action.setType(currentNode.getStepType());
