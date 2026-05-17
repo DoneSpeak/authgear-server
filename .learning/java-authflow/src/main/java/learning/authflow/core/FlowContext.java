@@ -5,7 +5,11 @@ import learning.authflow.intent.registry.IntentRegistry;
 import learning.authflow.milestone.Milestone;
 import lombok.Getter;
 
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * 流程运行时上下文 - 支持 Accept-Loop 状态管理和里程碑查询

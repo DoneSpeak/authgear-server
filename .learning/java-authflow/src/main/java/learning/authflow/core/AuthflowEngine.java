@@ -3,9 +3,12 @@ package learning.authflow.core;
 import learning.authflow.exception.AcceptLoopLimitExceededException;
 import learning.authflow.exception.IntentExecutionException;
 import learning.authflow.exception.InvalidStateTokenException;
+import learning.authflow.flowdef.FlowDefinition;
+import learning.authflow.flowdef.FlowDefinitionProvider;
 import learning.authflow.input.AuthflowInput;
 import learning.authflow.intent.*;
 import learning.authflow.intent.registry.IntentRegistry;
+import learning.authflow.model.FlowType;
 import learning.authflow.storage.StateStorage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,6 +31,7 @@ public class AuthflowEngine {
     private final IntentRegistry intentRegistry;
     private final StateTokenManager stateTokenManager;
     private final IdGenerator idGenerator;
+    private final FlowDefinitionProvider flowDefinitionProvider;
 
     /**
      * 执行 Accept 循环，处理输入并推进流程。
@@ -161,8 +165,31 @@ public class AuthflowEngine {
      * @return 新创建的流程实例
      */
     public FlowInstance create(String type, String name) {
-        // TODO: 实现创建新流程的逻辑
-        // 需要与 FlowDefinitionProvider 集成
-        throw new UnsupportedOperationException("create() not yet implemented");
+        // 1. 获取流程定义
+        FlowDefinition flowDef = flowDefinitionProvider.get(name);
+        if (flowDef == null) {
+            throw new IllegalArgumentException("Flow not found: " + name);
+        }
+
+        // 2. 创建流程实例
+        FlowInstance flow = new FlowInstance();
+        flow.setFlowId(idGenerator.generate());
+        flow.setFlowType(FlowType.valueOf(type.toUpperCase()));
+        flow.setFlowName(name);
+        flow.setStateToken(stateTokenManager.generateToken());
+        flow.setCurrentPath(new ArrayList<>());
+
+        // 3. 创建根 IntentNode（用于序列化保存）
+        IntentNode rootNode = new IntentNode();
+        rootNode.setKind("FlowRoot");
+        rootNode.setParams(Map.of("type", type, "name", name));
+        flow.setRootIntent(rootNode);
+
+        // 4. 保存初始状态
+        stateStorage.createFlow(flow);
+
+        // 5. 使用 Accept-Loop 自动推进到第一个需要输入的步骤
+        // 此时传入 null input，让 Accept-Loop 自动处理初始化
+        return accept(flow.getStateToken(), null);
     }
 }

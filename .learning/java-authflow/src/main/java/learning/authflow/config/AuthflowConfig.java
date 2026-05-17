@@ -92,8 +92,9 @@ public class AuthflowConfig {
     public AuthflowEngine authflowEngine(StateStorage stateStorage,
                                           IntentRegistry intentRegistry,
                                           StateTokenManager tokenManager,
-                                          IdGenerator idGenerator) {
-        return new AuthflowEngine(stateStorage, intentRegistry, tokenManager, idGenerator);
+                                          IdGenerator idGenerator,
+                                          FlowDefinitionProvider flowDefinitionProvider) {
+        return new AuthflowEngine(stateStorage, intentRegistry, tokenManager, idGenerator, flowDefinitionProvider);
     }
 
     @Bean
