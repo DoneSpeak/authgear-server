@@ -107,8 +107,18 @@ public class AuthflowEngine {
                     continue;
 
                 case COMPLETE:
-                    // 当前 Reactor 完成，推进到下一步并继续循环
-                    // 注意：advanceToNextStep() 会更新索引并重建栈
+                    // 当前 Reactor 完成，检查新步骤是否需要输入
+                    // 重建栈以获取下一步的 Intent
+                    context.rebuildStack();
+                    // 获取新步骤的 schema
+                    InputSchema nextSchema = context.getCurrentIntent() != null 
+                        ? context.getCurrentIntent().canReactTo(context) 
+                        : null;
+                    // 如果新步骤需要输入，退出循环等待用户
+                    if (nextSchema != null) {
+                        break;
+                    }
+                    // 如果新步骤不需要输入（自动推进），继续循环
                     continue;
 
                 case NEED_INPUT:

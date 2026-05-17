@@ -51,7 +51,7 @@ public class FlowContext {
      * 从当前节点重建运行时 Intent 栈
      * 桥接旧 StepHandler 和新 Intent 架构
      */
-    private void rebuildStack() {
+    public void rebuildStack() {
         // 获取当前节点的步骤类型
         StepType currentStepType = getCurrentStepType();
         if (currentStepType == null) {
