@@ -8,6 +8,7 @@ import learning.authflow.core.ExecutionContext;
 import learning.authflow.core.IdGenerator;
 import learning.authflow.core.StateTokenManager;
 import learning.authflow.core.UUIDIdGenerator;
+import learning.authflow.intent.registry.IntentRegistry;
 import learning.authflow.flowdef.AuthflowProperties;
 import learning.authflow.flowdef.FlowDefinitionProvider;
 import learning.authflow.flowdef.YamlPropertiesFlowDefinitionProvider;
@@ -89,13 +90,10 @@ public class AuthflowConfig {
 
     @Bean
     public AuthflowEngine authflowEngine(StateStorage stateStorage,
-                                          SessionStorage sessionStorage,
-                                          StepHandlerRegistry handlerRegistry,
-                                          FlowDefinitionProvider flowProvider,
+                                          IntentRegistry intentRegistry,
                                           StateTokenManager tokenManager,
                                           IdGenerator idGenerator) {
-        return new AuthflowEngine(stateStorage, sessionStorage, handlerRegistry, flowProvider,
-                                  tokenManager, idGenerator);
+        return new AuthflowEngine(stateStorage, intentRegistry, tokenManager, idGenerator);
     }
 
     @Bean

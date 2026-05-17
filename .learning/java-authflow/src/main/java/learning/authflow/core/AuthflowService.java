@@ -50,7 +50,7 @@ public class AuthflowService {
      */
     public AuthflowResponse execute(String stateToken, String jsonInput) {
         AuthflowInput input = jsonInput != null ? AuthflowInputJson.from(jsonInput) : null;
-        FlowInstance flow = engine.execute(stateToken, input);
+        FlowInstance flow = engine.accept(stateToken, input);
         return toResponse(flow);
     }
 
