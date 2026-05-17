@@ -98,11 +98,16 @@ public class FlowContext {
     }
 
     /**
-     * 追加节点到当前 Intent 帧
+     * 追加节点到当前 Intent 帧，同时更新 FlowInstance 的线性结构（向后兼容）
      */
     public void appendNode(FlowNode node) {
         if (!stack.isEmpty()) {
             stack.peek().nodes.add(node);
+        }
+        // 同时更新 FlowInstance 的线性结构以保持向后兼容
+        if (flow != null && node != null) {
+            flow.getNodes().add(node);
+            flow.setCurrentNodeIndex(flow.getNodes().size() - 1);
         }
     }
 

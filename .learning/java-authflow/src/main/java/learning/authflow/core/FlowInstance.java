@@ -31,11 +31,9 @@ public class FlowInstance implements Serializable {
 
     // ===== 旧线性结构（向后兼容）=====
     // 执行历史（追加不可变）
-    @Deprecated
     private List<FlowNode> nodes = new ArrayList<>();
 
     // 当前活跃节点索引（关键！O(1)直接索引）
-    @Deprecated
     private int currentNodeIndex = -1;
 
     // 状态令牌（每次变更更新，仅用于响应客户端）

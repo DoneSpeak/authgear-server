@@ -9,6 +9,8 @@ import learning.authflow.input.AuthflowInput;
 import learning.authflow.intent.*;
 import learning.authflow.intent.registry.IntentRegistry;
 import learning.authflow.model.FlowType;
+import learning.authflow.model.NodeType;
+import learning.authflow.model.StepType;
 import learning.authflow.storage.StateStorage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -182,17 +184,34 @@ public class AuthflowEngine {
         flow.setStateToken(stateTokenManager.generateToken());
         flow.setCurrentPath(new ArrayList<>());
 
-        // 3. 创建根 IntentNode（用于序列化保存）
+        // 3. 初始化线性结构 - 创建第一个节点（IDENTIFY）
+        FlowNode initialNode = new FlowNode();
+        initialNode.setNodeId("0");
+        initialNode.setType(NodeType.SIMPLE);
+        initialNode.setStepType(getInitialStepType(flowDef));
+        initialNode.setCompleted(false);
+        flow.getNodes().add(initialNode);
+        flow.setCurrentNodeIndex(0);
+
+        // 4. 创建根 IntentNode（用于序列化保存）
         IntentNode rootNode = new IntentNode();
         rootNode.setKind("FlowRoot");
         rootNode.setParams(Map.of("type", type, "name", name));
         flow.setRootIntent(rootNode);
 
-        // 4. 保存初始状态
+        // 5. 保存初始状态
         stateStorage.createFlow(flow);
 
-        // 5. 使用 Accept-Loop 自动推进到第一个需要输入的步骤
-        // 此时传入 null input，让 Accept-Loop 自动处理初始化
-        return accept(flow.getStateToken(), null);
+        return flow;
+    }
+
+    /**
+     * 获取流程的第一个步骤类型
+     */
+    private StepType getInitialStepType(FlowDefinition flowDef) {
+        if (flowDef.getSteps() != null && !flowDef.getSteps().isEmpty()) {
+            return flowDef.getSteps().get(0).getType();
+        }
+        return StepType.IDENTIFY; // 默认
     }
 }

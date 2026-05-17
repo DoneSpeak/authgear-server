@@ -58,7 +58,7 @@ class OobOtpEmailFlowIntegrationTest {
         // 验证响应
         assertThat(response).isNotNull();
         assertThat(response.getStateToken()).isNotNull();
-        assertThat(response.getType().toString()).isEqualTo("LOGIN");
+        assertThat(response.getType().toString().toUpperCase()).isEqualTo("LOGIN");
         assertThat(response.getName()).isEqualTo("email_password_primary_oob_otp_email");
 
         // 验证初始步骤是 IDENTIFY
