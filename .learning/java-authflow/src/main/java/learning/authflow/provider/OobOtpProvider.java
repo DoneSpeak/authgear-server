@@ -2,9 +2,17 @@ package learning.authflow.provider;
 
 /**
  * OOB OTP 提供者接口
- * 发送和验证 OTP
+ * 生成、发送和验证 OTP
  */
 public interface OobOtpProvider {
+    /**
+     * 生成并发送 OTP 到指定渠道
+     * @param loginId 登录ID
+     * @param channel 渠道（如 sms, email）
+     * @return 生成的 OTP
+     */
+    String generateOtp(String loginId, String channel);
+
     /**
      * 发送 OTP 到指定渠道
      * @param loginId 登录ID
