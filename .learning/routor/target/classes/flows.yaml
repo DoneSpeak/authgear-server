@@ -1,0 +1,23 @@
+login_flows:
+  - name: default_login_flow
+    type: LOGIN
+    steps:
+      - type: identify
+        oneOf:
+          - identification: oauth
+          - identification: passkey
+          - identification: email
+            steps:
+              - type: authenticate
+                oneOf:
+                  - authentication: primary_passkey
+                  - authentication: primary_password
+                    steps:
+                      - type: authenticate
+                        oneOf:
+                          - authentication: secondary_totp
+                  - authentication: primary_oob_otp_email
+                    steps:
+                      - type: authenticate
+                        oneOf:
+                          - authentication: secondary_totp

@@ -10,16 +10,18 @@
 
 在 Authgear 中，存在以下几种类型的 session：
 
-| Session 类型 | 包路径 | 主要用途 | 存储位置 |
-|-------------|--------|---------|---------|
-| **IDPSession** | `pkg/lib/session/idpsession` | 用户登录后的身份提供者会话 | Redis |
-| **OfflineGrant** | `pkg/lib/oauth` | OAuth 刷新令牌会话（用于 native app） | PostgreSQL |
-| **OAuthSession** | `pkg/lib/oauth/oauthsession` | OAuth 授权端点的临时会话 | Redis |
-| **WebappSession** | `pkg/auth/webapp` | Web 应用交互会话 | Redis |
-| **AuthflowSession** | `pkg/lib/authenticationflow` | 认证流程会话 | Redis |
-| **WorkflowSession** | `pkg/lib/workflow` | 工作流会话（旧版认证流程） | Redis |
-| **SAMLSession** | `pkg/lib/saml/samlsession` | SAML 协议会话 | Redis |
-| **AppSessionToken** | `pkg/lib/oauth` | 应用会话令牌 | Redis |
+
+| Session 类型          | 包路径                          | 主要用途                        | 存储位置       |
+| ------------------- | ---------------------------- | --------------------------- | ---------- |
+| **IDPSession**      | `pkg/lib/session/idpsession` | 用户登录后的身份提供者会话               | Redis      |
+| **OfflineGrant**    | `pkg/lib/oauth`              | OAuth 刷新令牌会话（用于 native app） | PostgreSQL |
+| **OAuthSession**    | `pkg/lib/oauth/oauthsession` | OAuth 授权端点的临时会话             | Redis      |
+| **WebappSession**   | `pkg/auth/webapp`            | Web 应用交互会话                  | Redis      |
+| **AuthflowSession** | `pkg/lib/authenticationflow` | 认证流程会话                      | Redis      |
+| **WorkflowSession** | `pkg/lib/workflow`           | 工作流会话（旧版认证流程）               | Redis      |
+| **SAMLSession**     | `pkg/lib/saml/samlsession`   | SAML 协议会话                   | Redis      |
+| **AppSessionToken** | `pkg/lib/oauth`              | 应用会话令牌                      | Redis      |
+
 
 ---
 
@@ -368,16 +370,18 @@ func (h *TokenHandler) doIssueTokensForAuthorizationCode(...) (*HandleResult, er
 
 ### 3.1 IDPSession 核心字段
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `ID` | string | UUID，唯一标识 |
-| `AppID` | string | 所属应用 ID |
-| `CreatedAt` | time.Time | 创建时间 |
-| `AuthenticatedAt` | time.Time | 最后认证时间（用于重新认证判断） |
-| `Attrs` | session.Attrs | 用户属性（UserID、Claims、AMR） |
-| `AccessInfo` | access.Info | 访问信息（初始/最后访问时间、IP、UserAgent） |
-| `TokenHash` | string | Session Token 的 SHA256 哈希值 |
-| `ParticipatedSAMLServiceProviderIDs` | []string | 参与的 SAML 服务提供者 ID 列表 |
+
+| 字段                                   | 类型            | 说明                           |
+| ------------------------------------ | ------------- | ---------------------------- |
+| `ID`                                 | string        | UUID，唯一标识                    |
+| `AppID`                              | string        | 所属应用 ID                      |
+| `CreatedAt`                          | time.Time     | 创建时间                         |
+| `AuthenticatedAt`                    | time.Time     | 最后认证时间（用于重新认证判断）             |
+| `Attrs`                              | session.Attrs | 用户属性（UserID、Claims、AMR）      |
+| `AccessInfo`                         | access.Info   | 访问信息（初始/最后访问时间、IP、UserAgent） |
+| `TokenHash`                          | string        | Session Token 的 SHA256 哈希值   |
+| `ParticipatedSAMLServiceProviderIDs` | []string      | 参与的 SAML 服务提供者 ID 列表         |
+
 
 **Session.Attrs**: `pkg/lib/session/attrs.go:8-11`
 
@@ -407,35 +411,39 @@ type Event struct {
 
 ### 3.2 OfflineGrant 核心字段
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `ID` | string | 唯一标识（Grant ID） |
-| `InitialClientID` | string | 初始 OAuth 客户端 ID |
-| `IDPSessionID` | string | 关联的 IDP Session ID（SSO 场景） |
-| `IdentityID` | string | 生物识别认证时的身份 ID |
-| `Attrs` | session.Attrs | 用户属性 |
-| `AccessInfo` | access.Info | 访问信息 |
-| `DeviceInfo` | map[string]interface{} | 设备信息（iOS/Android 详情） |
-| `SSOEnabled` | bool | 是否启用 SSO |
-| `RefreshTokens` | []OfflineGrantRefreshToken | 刷新令牌列表（支持多设备/客户端） |
-| `DeviceSecretHash` | string | 设备密钥哈希（Device SSO 使用） |
-| `App2AppDeviceKeyJWKJSON` | string | App2App 设备密钥（JWK 格式） |
+
+| 字段                        | 类型                         | 说明                         |
+| ------------------------- | -------------------------- | -------------------------- |
+| `ID`                      | string                     | 唯一标识（Grant ID）             |
+| `InitialClientID`         | string                     | 初始 OAuth 客户端 ID            |
+| `IDPSessionID`            | string                     | 关联的 IDP Session ID（SSO 场景） |
+| `IdentityID`              | string                     | 生物识别认证时的身份 ID              |
+| `Attrs`                   | session.Attrs              | 用户属性                       |
+| `AccessInfo`              | access.Info                | 访问信息                       |
+| `DeviceInfo`              | map[string]interface{}     | 设备信息（iOS/Android 详情）       |
+| `SSOEnabled`              | bool                       | 是否启用 SSO                   |
+| `RefreshTokens`           | []OfflineGrantRefreshToken | 刷新令牌列表（支持多设备/客户端）          |
+| `DeviceSecretHash`        | string                     | 设备密钥哈希（Device SSO 使用）      |
+| `App2AppDeviceKeyJWKJSON` | string                     | App2App 设备密钥（JWK 格式）       |
+
 
 ---
 
 ### 3.3 WebappSession 核心字段
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `ID` | string | 唯一标识 |
-| `Steps` | []SessionStep | 步骤历史栈 |
-| `Authflow` | *Authflow | 关联的认证流程 |
-| `OAuthSessionID` | string | 关联的 OAuth Session |
-| `SAMLSessionID` | string | 关联的 SAML Session |
-| `ClientID` | string | OAuth 客户端 ID |
-| `RedirectURI` | string | 回调 URI |
-| `SuppressIDPSessionCookie` | bool | 是否抑制 IDP Session Cookie |
-| `UserIDHint` | string | 预期的用户 ID |
+
+| 字段                         | 类型            | 说明                      |
+| -------------------------- | ------------- | ----------------------- |
+| `ID`                       | string        | 唯一标识                    |
+| `Steps`                    | []SessionStep | 步骤历史栈                   |
+| `Authflow`                 | *Authflow     | 关联的认证流程                 |
+| `OAuthSessionID`           | string        | 关联的 OAuth Session       |
+| `SAMLSessionID`            | string        | 关联的 SAML Session        |
+| `ClientID`                 | string        | OAuth 客户端 ID            |
+| `RedirectURI`              | string        | 回调 URI                  |
+| `SuppressIDPSessionCookie` | bool          | 是否抑制 IDP Session Cookie |
+| `UserIDHint`               | string        | 预期的用户 ID                |
+
 
 ---
 
@@ -468,14 +476,16 @@ func NewSessionCookieDef(sessionCfg *config.SessionConfig) CookieDef {
 
 ### 4.2 各 Session 对应的 Cookie
 
-| Session 类型 | Cookie Name | SameSite | 说明 |
-|--------------|-------------|----------|------|
-| IDPSession | `{app_id}_session` | Lax | 主 session cookie |
-| IDPSession | `{app_id}_same_site_strict` | Strict | 严格模式 session cookie |
-| OAuthSession | `{app_id}_oauth_ui` | None | OAuth 授权临时 cookie |
-| WebappSession | `{app_id}_webapp_session` | Lax | Web 应用 session |
-| AppSessionToken | `{app_id}_app_session` | Lax | 应用会话令牌 |
-| AppAccessToken | `{app_id}_app_access_token` | Lax | 应用访问令牌 |
+
+| Session 类型      | Cookie Name                 | SameSite | 说明                  |
+| --------------- | --------------------------- | -------- | ------------------- |
+| IDPSession      | `{app_id}_session`          | Lax      | 主 session cookie    |
+| IDPSession      | `{app_id}_same_site_strict` | Strict   | 严格模式 session cookie |
+| OAuthSession    | `{app_id}_oauth_ui`         | None     | OAuth 授权临时 cookie   |
+| WebappSession   | `{app_id}_webapp_session`   | Lax      | Web 应用 session      |
+| AppSessionToken | `{app_id}_app_session`      | Lax      | 应用会话令牌              |
+| AppAccessToken  | `{app_id}_app_access_token` | Lax      | 应用访问令牌              |
+
 
 ### 4.3 Cookie 工作流程
 
@@ -516,6 +526,7 @@ func (re *Resolver) Resolve(ctx context.Context, rw http.ResponseWriter, r *http
 DeviceInfo 是一个 `map[string]interface{}`，根据平台不同包含不同信息：
 
 **iOS 设备**:
+
 ```json
 {
   "ios": {
@@ -532,6 +543,7 @@ DeviceInfo 是一个 `map[string]interface{}`，根据平台不同包含不同�
 ```
 
 **Android 设备**:
+
 ```json
 {
   "android": {
@@ -554,10 +566,12 @@ DeviceInfo 是一个 `map[string]interface{}`，根据平台不同包含不同�
 
 ### 5.2 DeviceInfo 使用场景
 
-| Session 类型 | DeviceInfo 字段 | 用途 |
-|-------------|-----------------|------|
-| OfflineGrant | `DeviceInfo` | 显示设备名称、管理会话 |
-| IDPSession | 无 | 使用 UserAgent |
+
+| Session 类型   | DeviceInfo 字段 | 用途           |
+| ------------ | ------------- | ------------ |
+| OfflineGrant | `DeviceInfo`  | 显示设备名称、管理会话  |
+| IDPSession   | 无             | 使用 UserAgent |
+
 
 **设备信息提取**:
 
@@ -586,22 +600,26 @@ func ApplicationName(deviceInfo map[string]interface{}) string { ... }
 ### 6.1 IDPSession 生命周期
 
 **创建**: 
+
 - 触发点: 用户完成登录/注册流程
 - 代码: `pkg/lib/session/idpsession/provider.go:55-72`
 - 创建时设置: ID、CreatedAt、AuthenticatedAt、Attrs、TokenHash、Initial AccessEvent
 
 **更新**:
+
 - 触发点: 用户访问系统（通过 `AccessWithToken`）
 - 代码: `pkg/lib/session/idpsession/provider.go:158-205`
 - 更新内容: `LastAccess` 时间戳、IP、UserAgent
 - 重新计算过期时间（考虑 idle timeout）
 
 **重新认证**:
+
 - 触发点: 用户完成 MFA 或密码验证
 - 代码: `pkg/lib/session/idpsession/provider.go:74-102`
 - 更新内容: `AuthenticatedAt`、AMR
 
 **过期检查**:
+
 - 代码: `pkg/lib/session/idpsession/expiry.go:7-16`
 
 ```go
@@ -617,16 +635,19 @@ func setSessionExpireAtForResolvedSession(session *IDPSession, cfg *config.Sessi
 ```
 
 **删除**:
+
 - 触发点: 用户登出、管理员吊销、会话过期
 - 代码: `pkg/lib/session/idpsession/manager.go:42-48`
 
 ### 6.2 OfflineGrant 生命周期
 
 **创建**:
+
 - 触发点: Token 端点处理 `authorization_code` grant
 - 代码: `pkg/lib/oauth/handler/service_token.go` (IssueOfflineGrant)
 
 **访问更新**:
+
 - 触发点: 使用 refresh_token 获取新 access_token
 - 代码: `pkg/lib/oauth/grant_offline_service.go:48-83`
 
@@ -655,6 +676,7 @@ func (s *OfflineGrantService) AccessOfflineGrant(ctx context.Context, grantID st
 ```
 
 **过期计算**:
+
 - 代码: `pkg/lib/oauth/grant_offline_service.go:121-163`
 
 ```go
@@ -680,6 +702,7 @@ func (s *OfflineGrantService) computeRefreshTokenExpiryWithClient(token expirabl
 ```
 
 **Refresh Token 轮换**:
+
 - 代码: `pkg/lib/oauth/grant_offline_service.go:245-284`
 
 ```go
@@ -693,13 +716,15 @@ func (s *OfflineGrantService) RotateRefreshToken(...) (*RotateRefreshTokenResult
 
 ### 6.3 临时 Session 生命周期
 
-| Session 类型 | TTL | 说明 |
-|-------------|-----|------|
-| OAuthSession | `UserInteraction + Consent` | 授权流程期间有效 |
-| WebappSession | `GraphLifetime` | 交互图生命周期 |
-| AuthflowSession | `UserInteraction` | 用户交互期间有效 |
-| CodeGrant | `Short` | 短时效（默认几分钟） |
-| SAMLSession | `UserInteraction` | SAML 流程期间有效 |
+
+| Session 类型      | TTL                         | 说明          |
+| --------------- | --------------------------- | ----------- |
+| OAuthSession    | `UserInteraction + Consent` | 授权流程期间有效    |
+| WebappSession   | `GraphLifetime`             | 交互图生命周期     |
+| AuthflowSession | `UserInteraction`           | 用户交互期间有效    |
+| CodeGrant       | `Short`                     | 短时效（默认几分钟）  |
+| SAMLSession     | `UserInteraction`           | SAML 流程期间有效 |
+
 
 ---
 
@@ -791,21 +816,25 @@ type ListableSession interface {
 
 ### 8.2 核心 Provider/Service 类
 
-| 类名 | 文件路径 | 职责 |
-|------|----------|------|
-| `idpsession.Provider` | `pkg/lib/session/idpsession/provider.go` | IDP Session 创建、获取、访问更新、重新认证 |
-| `idpsession.Resolver` | `pkg/lib/session/idpsession/resolver.go` | 从 Cookie 解析 Session |
-| `idpsession.Manager` | `pkg/lib/session/idpsession/manager.go` | Session 列表、吊销、清理 |
+
+| 类名                    | 文件路径                                     | 职责                            |
+| --------------------- | ---------------------------------------- | ----------------------------- |
+| `idpsession.Provider` | `pkg/lib/session/idpsession/provider.go` | IDP Session 创建、获取、访问更新、重新认证   |
+| `idpsession.Resolver` | `pkg/lib/session/idpsession/resolver.go` | 从 Cookie 解析 Session           |
+| `idpsession.Manager`  | `pkg/lib/session/idpsession/manager.go`  | Session 列表、吊销、清理              |
 | `OfflineGrantService` | `pkg/lib/oauth/grant_offline_service.go` | OfflineGrant 访问、过期计算、Token 轮换 |
-| `TokenService` | `pkg/lib/oauth/handler/service_token.go` | Token 发放、OfflineGrant 创建 |
+| `TokenService`        | `pkg/lib/oauth/handler/service_token.go` | Token 发放、OfflineGrant 创建      |
+
 
 ### 8.3 Handler 类
 
-| 类名 | 文件路径 | 职责 |
-|------|----------|------|
+
+| 类名                     | 文件路径                                     | 职责                                   |
+| ---------------------- | ---------------------------------------- | ------------------------------------ |
 | `AuthorizationHandler` | `pkg/lib/oauth/handler/handler_authz.go` | OAuth 授权端点，创建 OAuthSession、CodeGrant |
-| `TokenHandler` | `pkg/lib/oauth/handler/handler_token.go` | OAuth Token 端点，创建 OfflineGrant |
-| `SessionMiddleware` | `pkg/auth/webapp/session_middleware.go` | Webapp Session 中间件 |
+| `TokenHandler`         | `pkg/lib/oauth/handler/handler_token.go` | OAuth Token 端点，创建 OfflineGrant       |
+| `SessionMiddleware`    | `pkg/auth/webapp/session_middleware.go`  | Webapp Session 中间件                   |
+
 
 ---
 
@@ -952,12 +981,14 @@ func (g *OfflineGrant) IsSameSSOGroup(ss session.SessionBase) bool {
 
 ## 11. 关键 Specs 文档
 
-| 文档 | 路径 | 内容 |
-|------|------|------|
-| Session 规范 | `docs/specs/sessions.md` | Session 类型、生命周期、并发控制 |
-| OAuth 规范 | `docs/specs/oidc.md` | OIDC、OAuth2 流程、Token 格式 |
-| Glossary | `docs/specs/glossary.md` | 术语定义 |
+
+| 文档         | 路径                         | 内容                         |
+| ---------- | -------------------------- | -------------------------- |
+| Session 规范 | `docs/specs/sessions.md`   | Session 类型、生命周期、并发控制       |
+| OAuth 规范   | `docs/specs/oidc.md`       | OIDC、OAuth2 流程、Token 格式    |
+| Glossary   | `docs/specs/glossary.md`   | 术语定义                       |
 | User Model | `docs/specs/user-model.md` | 用户模型、Identity 与 Session 关系 |
+
 
 ---
 
@@ -1008,13 +1039,9 @@ func (g *OfflineGrant) IsSameSSOGroup(ss session.SessionBase) bool {
 Authgear 的 Session 系统设计特点：
 
 1. **分层设计**: 不同类型的 session 负责不同阶段的流程（OAuthSession → WebappSession → AuthflowSession → IDPSession/OfflineGrant）
-
 2. **多存储后端**: Redis 用于临时 session 和 IDPSession，PostgreSQL 用于持久化的 OfflineGrant
-
 3. **SSO 支持**: 通过 SSOGroupIDPSessionID 将 IDPSession 和 OfflineGrant 关联到同一 SSO 组
-
 4. **安全机制**: Token 哈希存储、Cookie SameSite 策略、DPoP 绑定、Refresh Token 轮换
-
 5. **设备感知**: OfflineGrant 存储 DeviceInfo，支持设备级别的会话管理
-
 6. **灵活过期**: 支持固定生命周期和空闲超时两种过期策略
+

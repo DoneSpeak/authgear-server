@@ -13,12 +13,26 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "specs/glossary.md",
+                "file": "specs/authentication-flow.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "glossary"
+              "title": "authentication-flow"
+            }
+          },
+          {
+            "id": "ce2b5da0c76b4069",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "specs/authentication-flow.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "authentication-flow"
             }
           },
           {
@@ -27,12 +41,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "specs/user-profile/design.md",
+                "file": "_sidebar.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "design"
+              "title": "_sidebar"
             }
           },
           {
@@ -63,7 +77,8 @@
               "title": "user-model"
             }
           }
-        ]
+        ],
+        "currentTab": 2
       }
     ],
     "direction": "vertical"
@@ -95,7 +110,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "",
+                "query": "login-flow",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -120,7 +135,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 234.5
+    "width": 255.5
   },
   "right": {
     "id": "054990f151ad846d",
@@ -225,19 +240,26 @@
       "bases:Create new base": false
     }
   },
-  "active": "84ff171ddd139394",
+  "active": "c7ce2e568db41794",
   "lastOpenFiles": [
+    "specs/oidc-native-sso.md",
+    "specs/oidc-sso-browser.md",
+    "specs/oidc-sso.md",
+    "specs/user-profile/design.md",
+    "_sidebar.md",
+    "specs/authentication-flow.md",
+    "superpowers/specs/2026-05-18-liteflow-auth-design.md",
+    "superpowers/plans/2026-05-17-routor-flow-executor.md",
+    "superpowers/specs/2026-05-17-routor-flow-executor-design.md",
+    "specs/user-model.md",
+    "specs/glossary.md",
     "superpowers/plans/2026-05-17-java-authflow-mfa-implementation.md",
     "superpowers/plans",
     "superpowers/specs/2026-05-17-java-authflow-mfa-design.md",
     "superpowers/specs",
     "superpowers",
-    "specs/user-profile/design.md",
-    "specs/user-model.md",
     "specs/bot-protection.md",
     "Makefile",
-    "specs/glossary.md",
-    "_sidebar.md",
     "index.html",
     "specs/authentication-flow-api-reference.md"
   ]

@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: liteflow-auth
+
+  redis:
+    host: localhost
+    port: 6379
+    database: 0
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+
+liteflow:
+  rule-source: none
+  print-banner: false
+  # 启用组件扫描
+  enable: true
+  # 显式指定组件扫描包路径
+  component-scan-package: com.liteflow.auth.component
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.yomahub.liteflow: INFO
+    com.liteflow.auth: DEBUG
