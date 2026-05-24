@@ -35,7 +35,152 @@ IDTokenTokenType                 = "urn:ietf:params:oauth:token-type:id_token"
 DeviceSecretTokenType            = "urn:x-oath:params:oauth:token-type:device-secret"
 ```
 
-### 1.3 OfflineGrant 中的 Device SSO 字段
+### 1.3 Native App 如何创建 IDP Session（移动端 OAuth 的基础）
+
+理解 Native App 如何创建 IDP Session 是理解 Device SSO 的前提。**Native App 不会绕过浏览器，而是使用平台提供的安全认证浏览器：**
+
+| 平台 | 组件 | 与系统浏览器的关系 | SDK 配置 |
+|------|------|-------------------|---------|
+| **iOS** | [`ASWebAuthenticationSession`](https://developer.apple.com/documentation/authenticationservices/aswebauthenticationsession) | 与 **Safari** 共享 Cookie Jar | 自动，iOS 12+ 默认行为 |
+| **Android** | [Custom Tabs](https://developer.chrome.com/docs/android/custom-tabs) | 与 **Chrome** 共享 Cookie Jar | 自动，推荐方式 |
+
+两种组件的关键特性：
+- **共享 Cookie Jar**：认证完成后，IDP Session Cookie 不仅对当前 App 可见，对同一设备上的系统浏览器（Safari/Chrome）和其他使用相同组件发起 OAuth 的 App 也可见
+- **App 无法访问 Cookie**：宿主 App 无法读取认证浏览器中的 Cookie 或网页内容，保证了安全性
+- **独立的 Web 上下文**：每次打开都是全新的 Web 会话（不会遗留前一次的表单状态）
+
+#### IDP Session 的创建流程
+
+```
+App 1 调用 SDK.authenticate()
+  │
+  │  SDK 打开 ASWebAuthenticationSession / Custom Tabs
+  │  发起 GET /oauth2/authorize?client_id=app1&scope=...&x_sso_enabled=true
+  │
+  ▼
+Authgear 授权端点 (/oauth2/authorize)
+  │
+  │  用户在 AuthUI 页面中输入凭据并完成认证
+  │
+  │  认证成功后, 服务端创建 IDP Session:
+  │  - 在 Redis 中存储 session 数据 (idpsession.Session)
+  │  - 生成 session cookie (app_id_session=...)
+  │
+  │  x_sso_enabled 决定 cookie 是否被抑制:
+  │
+  │  ┌─ x_sso_enabled=true ─────────────────────────────────────┐
+  │  │  SuppressIDPSessionCookie() = false                       │
+  │  │  → SkipCreate = false (不跳过创建)                         │
+  │  │  → Set-Cookie: app_id_session=<token> 被发送到客户端         │
+  │  │  → Cookie 存储在 ASWebAuthenticationSession/Custom Tabs    │
+  │  │    的共享 Cookie Jar 中                                    │
+  │  │  → Safari/Chrome + 其他 App 也能看到这个 Cookie             │
+  │  └──────────────────────────────────────────────────────────┘
+  │
+  │  ┌─ x_sso_enabled=false ────────────────────────────────────┐
+  │  │  SuppressIDPSessionCookie() = true                        │
+  │  │  → SkipCreate = true (跳过 cookie 创建)                    │
+  │  │  → 服务端 IDP Session 仍然创建（AuthnSession 存在）         │
+  │  │  → 但 Set-Cookie 响应头被抑制，不发给客户端                  │
+  │  │  → Cookie 不进入共享 Cookie Jar                            │
+  │  └──────────────────────────────────────────────────────────┘
+  │
+  ▼
+302 redirect → App 1 收到 authorization_code
+  │
+  │  POST /oauth2/token (grant_type=authorization_code)
+  │
+  ▼
+doIssueTokensForAuthorizationCode()  handler_token.go:1680
+  │
+  │  info.AuthenticatedBySessionType = "idp"   ← 认证来源于 IDP Session
+  │  info.AuthenticatedBySessionID   = <idp_session_id>
+  │
+  │  // 构建 IssueOfflineGrantOptions
+  │  opts := IssueOfflineGrantOptions{
+  │      IDPSessionID:      offlineGrantIDPSessionID,  // ← 始终被设置
+  │      SSOEnabled:        code.AuthorizationRequest.SSOEnabled(),  // ← x_sso_enabled 的值
+  │      IssueDeviceSecret: issueDeviceToken,           // ← scope 包含 device_sso
+  │  }
+  │
+  ▼
+IssueOfflineGrant()  service_token.go:122
+  │
+  │  offlineGrant.IDPSessionID = opts.IDPSessionID   // 总是记录 IDP Session ID
+  │  offlineGrant.SSOEnabled   = opts.SSOEnabled     // 决定是否加入 SSO Group
+  │
+  │  // 关键区别:
+  │  //   x_sso_enabled=true  → SSOEnabled=true  → OfflineGrant 加入 SSO Group
+  │  //   x_sso_enabled=false → SSOEnabled=false → OfflineGrant 独立存在
+  │
+  ▼
+OfflineGrant 创建完成, 包含:
+  - DeviceSecretHash = SHA256(device_secret) ← device_sso scope 触发
+  - IDPSessionID                               ← 总是记录
+  - SSOEnabled                                 ← 由 x_sso_enabled 决定
+```
+
+#### 代码关键路径
+
+**`SuppressIDPSessionCookie()` 判断逻辑** (`pkg/lib/oauth/protocol/authz.go:79-97`):
+
+```go
+func (r AuthorizationRequest) SuppressIDPSessionCookie() bool {
+    if r["x_sso_enabled"] != "" {
+        return r["x_sso_enabled"] != "true"   // "true" → 不抑制, 其他值 → 抑制
+    }
+    if r["x_suppress_idp_session_cookie"] != "" {
+        return r["x_suppress_idp_session_cookie"] == "true"  // 向后兼容
+    }
+    return false  // 默认不抑制
+}
+```
+
+**`SkipCreate` 在认证流中的传递** (`pkg/lib/authenticationflow/declarative/intent_login_flow.go:80`):
+
+```go
+// 登录完成后, 调用 CreateSession 时:
+deps.IDPSessions.Create(ctx, &idpsession.CreateOptions{
+    SkipCreate: authflow.GetSuppressIDPSessionCookie(ctx),
+    // SkipCreate=true → 不设 cookie (服务端 session 仍创建)
+    // SkipCreate=false → 设 Set-Cookie
+})
+```
+
+**`doIssueTokensForAuthorizationCode` 中的 IDPSessionID 传递** (`pkg/lib/oauth/handler/handler_token.go:1791-1808`):
+
+```go
+// 无论 x_sso_enabled 为何值, 只要认证来源是 IDP Session,
+// offlineGrantIDPSessionID 都会被设置
+var offlineGrantIDPSessionID string
+switch session.Type(info.AuthenticatedBySessionType) {
+case session.TypeIdentityProvider:
+    offlineGrantIDPSessionID = info.AuthenticatedBySessionID
+default:
+    // 非 IDP Session 认证来源 (如 refresh_token 重用、biometric 等)
+    // 此时没有 IDP Session ID
+}
+
+opts := IssueOfflineGrantOptions{
+    IDPSessionID:  offlineGrantIDPSessionID,  // ← 始终传递 (如果是 IDP 认证来源)
+    SSOEnabled:    code.AuthorizationRequest.SSOEnabled(),  // ← 决定是否加入 SSO Group
+}
+```
+
+#### 总结：两个独立维度的控制
+
+| 字段 | 控制什么 | 由谁决定 | 何时生效 |
+|------|---------|---------|---------|
+| `IDPSessionID` | 记录"这个 OfflineGrant 是从哪个 IDP Session 创建的" | 认证来源类型 (总是 IdentityProvider) | OfflineGrant 创建时记录 |
+| `SSOEnabled` | 控制"这个 OfflineGrant 是否加入 SSO Group" | `x_sso_enabled` 参数 | `IsSameSSOGroup()` 检查 + `GetOfflineGrant()` 有效性验证 |
+
+**IDP Session 总是会存在于服务端**（它在认证流程中被创建），区别只在于：
+- `x_sso_enabled=true`：Cookie 被返回给客户端 → 进入共享 Cookie Jar → 其他 App/浏览器可见 → OfflineGrant 加入 SSO Group
+- `x_sso_enabled=false`：Cookie 被抑制 → 不进入共享 Cookie Jar → OfflineGrant 独立
+
+**对 Device SSO 的影响**：Device SSO 依赖 `device_secret` + `id_token` 在共享存储中传递，不依赖 Cookie Jar。所以即使 `x_sso_enabled=false`（没有 Cookie 传播），两个 App 之间仍然可以通过共享存储中的 `device_secret` + `id_token` 完成 Device SSO。
+
+### 1.4 OfflineGrant 中的 Device SSO 字段
 
 ```go
 // pkg/lib/oauth/grant_offline.go:61-62
@@ -47,7 +192,7 @@ type OfflineGrant struct {
 }
 ```
 
-### 1.4 ID Token 中的 ds_hash Claim
+### 1.5 ID Token 中的 ds_hash Claim
 
 ```go
 // pkg/lib/oauth/oidc/id_token.go:117-119
@@ -59,7 +204,87 @@ if dshash := opts.DeviceSecretHash; dshash != "" {
 
 `ds_hash` 的值等于 `SHA256(device_secret)`，即 `OfflineGrant.DeviceSecretHash`。
 
-### 1.5 Token Hashing
+#### id_token 的有效期与验证规则
+
+**id_token 的名义有效期是 5 分钟**：
+
+```go
+// pkg/lib/oauth/oidc/id_token.go:57-59
+// IDTokenValidDuration is the valid period of ID token.
+// It can be short, since id_token_hint should accept expired ID tokens.
+const IDTokenValidDuration = duration.Short  // = 5 分钟
+
+// pkg/lib/oauth/oidc/id_token.go:106
+_ = claims.Set(jwt.ExpirationKey, now.Add(IDTokenValidDuration).Unix())
+```
+
+**但 `VerifyIDToken` 不检查 `exp`**：
+
+```go
+// pkg/lib/oauth/oidc/id_token.go:211-238
+func (ti *IDTokenIssuer) VerifyIDToken(idToken string) (token jwt.Token, err error) {
+    // 1. 验证签名
+    _, err = jws.Verify([]byte(idToken), jws.WithKeySet(jwkSet))
+    if err != nil {
+        return
+    }
+    // 2. 解析 JWT (不验证 exp, iss, aud)
+    _, token, err = jwtutil.SplitWithoutVerify([]byte(idToken))
+    // ...
+    // 注释说明:
+    // We used to validate `aud`.
+    // However, some features like Native SSO will share a id token with multiple clients.
+    // So we removed the checking of `aud`.
+    //
+    // Normally we should also validate `iss`.
+    // But `iss` can change if public_origin was changed.
+    // We should still accept ID token referencing an old public_origin.
+    return
+}
+```
+
+**`VerifyIDToken` 只做两件事：验证签名 + 解析 JWT。不校验 `exp`、`iss`、`aud`。**
+
+**设计规范明确允许过期的 id_token**：
+
+```markdown
+// docs/specs/oidc-native-sso.md:84
+Validate `subject_token` is a valid ID token issued to the first app.
+An expired ID token is still valid. (4.3 Point 2)
+```
+
+**真正限制 id_token 使用的不是 `exp`，而是 `ds_hash`**。id_token 的实际生命周期如下：
+
+```
+id_token 可用窗口 = 从上一次 Token Exchange 到下一次 Token Exchange (device_secret 轮换)
+                 （而不是从签发到 exp）
+
+每次 Token Exchange 成功后:
+  1. rotateDeviceSecret() → 生成新的 device_secret, 更新 OfflineGrant.DeviceSecretHash
+  2. 签发新 id_token, ds_hash = SHA256(新 device_secret)
+  3. SDK 将新 id_token + 新 device_secret 存入共享存储，覆盖旧值
+  4. ★ 旧 id_token 的 ds_hash 指向旧 device_secret → 下次 Token Exchange 时
+     verifyIDTokenDeviceSecretHash 会失败: ds_hash != SHA256(当前 device_secret)
+```
+
+**生命周期对比表**：
+
+| 场景 | id_token 的 exp | device_secret 是否匹配 | 能否用于 Token Exchange |
+|------|----------------|----------------------|----------------------|
+| 刚签发（< 5 分钟） | 未过期 | 匹配 | **能** |
+| 5 分钟 ~ 长期 | 已过期 | 匹配 | **仍能** — VerifyIDToken 不校验 exp |
+| device_secret 轮换后 | 任意 | ds_hash 不匹配 | **不能** — SHA256(旧 ds_hash) != 当前 DeviceSecretHash |
+| 签名被篡改 | — | — | **不能** — 签名验证失败 |
+| id_token 来自其他用户/设备 | 任意 | ds_hash 不匹配 + OfflineGrant.DeviceSecretHash 不匹配 | **不能** — 双重 hash 校验失败 |
+
+**为什么设计成这样？**
+
+1. **id_token 的 `exp` 设置短是标准 OIDC 实践**（id_token 通常用于单次认证，不需长期有效）
+2. **Device SSO 场景下 id_token 是"凭证载体"而非"时效凭证"** — 它携带的是 `ds_hash`（对 device_secret 的承诺），过期与否不影响这个承诺的验证
+3. **真正的时效控制来自 device_secret 轮换** — 每次 App 2 完成 Token Exchange，device_secret 被轮换，旧的 id_token 自动失效。这保证了"前一个 App 登录→下一个 App 登录"的时间窗口由 device_secret 的使用频率决定，而非 id_token 的 5 分钟 exp
+4. **安全等价**：如果攻击者窃取了 id_token，那么他也需要同时窃取 device_secret（且 device_secret 没有被轮换），5 分钟有效期不会显著提升安全性
+
+### 1.6 Token Hashing
 
 ```go
 // pkg/lib/oauth/token.go:17-19
@@ -74,7 +299,7 @@ func GenerateToken() string {
 }
 ```
 
-### 1.6 Scope 验证
+### 1.7 Scope 验证
 
 ```go
 // pkg/lib/oauth/scope.go:246-255
@@ -93,7 +318,7 @@ if s == PreAuthenticatedURLScope && !hasDeviceSSO {
 - `scope=device_sso` 要求 OAuth client 配置 `x_pre_authenticated_url_enabled: true`
 - 如果请求 `scope=https://authgear.com/scopes/pre-authenticated-url`，必须同时请求 `scope=device_sso`
 
-### 1.7 issueOfflineGrant 中的 DeviceSecret 生成逻辑
+### 1.8 issueOfflineGrant 中的 DeviceSecret 生成逻辑
 
 ```go
 // pkg/lib/oauth/handler/service_token.go:167-173
@@ -126,7 +351,7 @@ func (s *TokenService) IssueDeviceSecret(ctx context.Context, resp protocol.Toke
 func (r TokenResponse) DeviceSecret(v string) { r["device_secret"] = v }
 ```
 
-### 1.8 shouldIssueDeviceSecret
+### 1.9 shouldIssueDeviceSecret
 
 ```go
 // pkg/lib/oauth/handler/handler_token.go:2067-2076
